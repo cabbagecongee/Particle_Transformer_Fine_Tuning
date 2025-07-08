@@ -2,8 +2,8 @@
 Imports the model and data and initializes model.
 '''
 
-from ParT_ParticleNet.data import load_data, get_data_config
-from ParT_ParticleNet.model import get_model, get_loss
+from data import load_data, get_data_config
+from model import get_model, get_loss
 
 import torch
 import torch.optim
