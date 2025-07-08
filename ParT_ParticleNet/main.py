@@ -169,8 +169,9 @@ scores, true_labels, fpr, tpr, roc_auc = get_scores_and_labels(model, test_loade
 # Plot ROC curve
 plt.figure()
 n_classes = scores.shape[1]
+class_names = data_config.get("label_value", [f"Class {i}" for i in range(n_classes)])
 for i in range(n_classes):
-    plt.plot(fpr[i], tpr[i], label=f"Class {i} (AUC = {roc_auc[i]:.2f})")
+    plt.plot(fpr[i], tpr[i], label=f"{class_names[i]} (AUC = {roc_auc[i]:.2f})")
 
 plt.plot(fpr["macro"], tpr["macro"], label=f"Macro-average (AUC = {roc_auc['macro']:.2f})", linestyle='--', linewidth=2)
 

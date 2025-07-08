@@ -16,5 +16,5 @@ spec:
   volumes:
   - name: output-volume
     persistentVolumeClaim:
-      claimName: pvc  # your existing PVC name
+      claimName: pvc 
   restartPolicy: Never
