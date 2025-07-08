@@ -206,3 +206,8 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 Miniforge3-Darwin-arm64.sh
+output/ParT_loss.png
+output/ParT_test_acc.png
+.gitignore
+.gitignore
+output/ParT_val_acc.png

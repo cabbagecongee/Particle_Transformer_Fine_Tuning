@@ -10,6 +10,8 @@ import torch.optim
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc
+import numpy as np
 
 NUM_EPOCHS = 40
 
@@ -55,6 +57,55 @@ def get_accuracy(model, loader):
         correct += (pred==true).sum().item()
         
     return (correct/total)
+
+def get_scores_and_labels(model, loader):
+    # Collect model outputs and true labels
+    model.eval()
+    all_labels = []
+    all_probs = []
+
+    with torch.no_grad():
+        for pf_x, pf_v, pf_mask, labels in test_loader:
+            pf_x = pf_x.to(device)
+            pf_v = pf_v.to(device)
+            pf_mask = pf_mask.to(device)
+            labels = labels.to(device)
+
+            logits = model(None, pf_x, pf_v, pf_mask)
+            probs = torch.nn.functional.softmax(logits, dim=1)
+
+            all_probs.append(probs.cpu())
+            all_labels.append(labels.cpu())
+
+    all_probs = torch.cat(all_probs).numpy()              # shape: (N, num_classes)
+    all_labels = torch.cat(all_labels).numpy()            # shape: (N, num_classes)
+
+    # One-vs-rest ROC curves
+    fpr = dict()
+    tpr = dict()
+    roc_auc = dict()
+    n_classes = all_labels.shape[1]
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(all_labels[:, i], all_probs[:, i])
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    # Compute macro-average ROC curve and AUC
+    all_fpr = np.unique(np.concatenate([fpr[i] for i in range(n_classes)]))
+    mean_tpr = np.zeros_like(all_fpr)
+
+    for i in range(n_classes):
+        mean_tpr += np.interp(all_fpr, fpr[i], tpr[i])
+
+    mean_tpr /= n_classes
+
+    fpr["macro"] = all_fpr
+    tpr["macro"] = mean_tpr
+    roc_auc["macro"] = auc(fpr["macro"], tpr["macro"])
+
+    return all_probs, all_labels, fpr, tpr, roc_auc
+
+
 
 total_loss = []
 total_val_acc = []
@@ -110,5 +161,24 @@ plt.xlabel("Epoch")
 plt.ylabel("Validation Accuracy")
 plt.title(f"Validation Accuracy on {NUM_EPOCHS} epochs over 500k datapoints")
 plt.savefig("/mnt/output/ParT_val_acc.png")
+plt.clf()
+
+# Compute ROC and AUC
+scores, true_labels, fpr, tpr, roc_auc = get_scores_and_labels(model, test_loader)
+
+# Plot ROC curve
+plt.figure()
+n_classes = scores.shape[1]
+for i in range(n_classes):
+    plt.plot(fpr[i], tpr[i], label=f"Class {i} (AUC = {roc_auc[i]:.2f})")
+
+plt.plot(fpr["macro"], tpr["macro"], label=f"Macro-average (AUC = {roc_auc['macro']:.2f})", linestyle='--', linewidth=2)
+
+plt.plot([0, 1], [0, 1], 'k--')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("Multiclass ROC Curve")
+plt.legend(loc="lower right")
+plt.savefig("/mnt/output/ParT_roc_curve.png")
 plt.clf()
 
