@@ -1,0 +1,141 @@
+# ============================================
+# EVENT SELECTION
+# ============================================
+# Cut away events you're not interested in.
+# Can use jet_pt, jet_eta, etc. with numpy-style logic.
+# Use ak (awkward), np (numpy), and math (math) functions.
+selection: null  # Example: (jet_pt > 500) & (abs(jet_eta) < 2.5)
+
+# ============================================
+# NEW DERIVED VARIABLES
+# ============================================
+# Define new variables (e.g., log(pt), ΔR) using expressions.
+# This improves network performance and stability.
+new_variables:
+  # Dummy mask (all ones). Needed for padding.
+  part_mask: ak.ones_like(part_pt)
+
+  # Transverse momentum and energy — bounded with log.
+  part_pt: np.hypot(part_px, part_py)
+  part_pt_log: np.log(part_pt + 1e-8)
+  part_e_log: np.log(part_energy + 1e-8)
+
+  # Relative to jet — makes features scale-invariant.
+  part_logptrel: np.log(part_pt / (jet_pt + 1e-8))
+  part_logerel: np.log(part_energy / (jet_energy + 1e-8))
+
+  # Angular distance to jet axis
+  part_deltaR: np.hypot(part_deta, part_dphi)
+
+  # Impact parameters — bounded with tanh
+  part_d0: np.tanh(part_d0val)
+  part_dz: np.tanh(part_dzval)
+
+# ============================================
+# PREPROCESSING METHOD
+# ============================================
+# `manual`: you provide mean/std to normalize features.
+# `auto`: Weaver will compute these automatically from data.
+preprocess:
+  method: manual     # Choose: manual OR auto
+  data_fraction: 0.3 # Used only if method = auto (fraction of data used to compute stats)
+
+# ============================================
+# MODEL INPUTS
+# ============================================
+inputs:
+  # -----------------------------------------
+  # Spatial coordinates (used as attention keys)
+  # -----------------------------------------
+  pf_points:
+    length: 128               # Max particles per jet
+    pad_mode: wrap            # wrap or constant; wrap loops real particles
+    vars:
+      - [part_deta, null]
+      - [part_dphi, null]
+
+  # -----------------------------------------
+  # Physics-motivated features (used in attention input)
+  # -----------------------------------------
+  pf_features:
+    length: 128
+    pad_mode: wrap
+    vars:
+      # Format: [var_name, subtract_by (mean), multiply_by (1/std), clip_min, clip_max, pad_value]
+      # These values are ONLY needed if preprocess.method = manual
+      - [part_pt_log, 1.5, 0.7]       # Example: subtract 1.5, scale by 0.7
+      - [part_e_log, 2.0, 0.7]
+      - [part_logptrel, -3.0, 1.0]
+      - [part_logerel, -3.0, 1.0]
+      - [part_deltaR, 0.5, 2.0]
+      - [part_charge, null]          # Categorical variable (no normalization)
+      - [part_isChargedHadron, null]
+      - [part_isNeutralHadron, null]
+      - [part_isPhoton, null]
+      - [part_isElectron, null]
+      - [part_isMuon, null]
+      - [part_d0, null]
+      - [part_d0err, 0, 1, 0, 1]     # Clip from 0 to 1
+      - [part_dz, null]
+      - [part_dzerr, 0, 1, 0, 1]
+      - [part_deta, null]
+      - [part_dphi, null]
+
+  # -----------------------------------------
+  # Raw 4-vector representation
+  # -----------------------------------------
+  pf_vectors:
+    length: 128
+    pad_mode: wrap
+    vars:
+      - [part_px, null]
+      - [part_py, null]
+      - [part_pz, null]
+      - [part_energy, null]
+
+  # -----------------------------------------
+  # Binary mask for padding (1 = real particle)
+  # -----------------------------------------
+  pf_mask:
+    length: 128
+    pad_mode: constant
+    vars:
+      - [part_mask, null]
+
+# ============================================
+# 🎯 LABELS (GROUND TRUTH)
+# ============================================
+labels:
+  # Choose `simple` for multi-class classification
+  # Choose `custom` if you're computing labels manually from expressions
+  type: simple
+  value: [label_QCD, label_Hbb, label_Htautau]  # 👈 Add your specific H→ττ label here
+
+# ============================================
+# 👁️ OBSERVERS (NOT FED INTO MODEL)
+# ============================================
+# Variables you want to monitor or plot — e.g. pt spectrum, mass, N-subjettiness
+observers:
+  - jet_pt
+  - jet_eta
+  - jet_phi
+  - jet_energy
+  - jet_nparticles
+  - jet_tau1
+  - jet_tau2
+  - jet_tau3
+  - jet_tau4
+  - jet_sdmass
+
+# ============================================
+# ⚖️ (OPTIONAL) TRAINING WEIGHTS
+# ============================================
+# Use this if you want to rebalance classes or flatten pt spectrum.
+# weights:
+#   use_precomputed_weights: false
+#   reweight_method: flat  # Choices: flat, log, inverse
+#   reweight_basewgt: jet_pt
+#   reweight_vars:
+#     jet_pt: [0, 200, 400, 600, 800, 1000]
+#   reweight_classes: [label_QCD, label_Hbb, label_Htautau]
+#   class_weights: [1.0, 1.0, 1.0]  # optional: extra class balancing

@@ -1,0 +1,43 @@
+step by step of how to set up cluster (for my reference)
+
+1. prepare github repo
+    * make sure the repo is public or use a token if private 
+    * training script (main.py) should run autonomously and save any outputs
+
+2a. create a .yaml file
+    * template can be found at Week2/template.yaml
+
+2b. create a persistent volume claim
+    * pvc.yaml
+    template: 
+                    apiVersion: v1
+                kind: PersistentVolumeClaim
+                metadata:
+                name: tn-gnn-output-pvc
+                namespace: cms-ml
+                spec:
+                accessModes:
+                    - ReadWriteOnce
+                resources:
+                    requests:
+                    storage: 1Gi
+
+
+3. deploy job
+    * commands: 
+        kubectl apply -f <name>.yaml -n cms-ml
+        kubectl get pods -n cms-ml
+        kubectl logs -f <pod-name> -n cms-ml
+
+4. retrieve output files
+    kubectl cp -n cms-ml <pod-name>:/opt/repo/Deep_Learning_Review_and_Practice/Week2/JetNet_Classification/output ./local-output
+
+5. clean up
+    kubectl delete job <job name> -n cms-ml
+
+
+* check memory
+    kubectl describe pod <pod-name> -n cms-ml
+
+
+
