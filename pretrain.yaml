@@ -4,6 +4,7 @@ metadata:
   name: tn-job-pretrain-backbone
   namespace: cms-ml
 spec:
+  backoffLimit: 2
   template:
     spec:
       restartPolicy: Never
@@ -14,6 +15,7 @@ spec:
         - sh
         - -c
         - |
+          apt update && apt install -y wget && \
           cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
           pip install --upgrade pip && \
           pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
@@ -60,5 +62,3 @@ spec:
       - name: jet-pvc
         persistentVolumeClaim:
           claimName: tn-pvc
-
-  backoffLimit: 3
