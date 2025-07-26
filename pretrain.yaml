@@ -20,12 +20,14 @@ spec:
           pip install --upgrade pip && \
           pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
                       weaver-core jetnet tensorboard && \
+          pip install aiohttp requests &&\
+          pip install -U pyarrow &&\
           mkdir -p /mnt/data/output && \
           python train.py
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
-        - name: jet-pvc
+        - name: tn-pvc
           mountPath: /mnt/data
         resources:
           limits:
@@ -59,6 +61,6 @@ spec:
       volumes:
       - name: git-repo
         emptyDir: {}
-      - name: jet-pvc
+      - name: tn-pvc
         persistentVolumeClaim:
           claimName: tn-pvc
