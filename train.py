@@ -14,20 +14,35 @@ from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import random_split
 from model import ParticleTransformerBackbone, ParticleTransformer
 from dataloader import JetDataset
+import subprocess
 
 
 BATCH_SIZE = 512
 LR = 1e-3
 EPOCHS = 100
-SAVE_DIR = "pretraining_output"
+DATA_DIR = "/mnt/data/jet_data"
+SAVE_DIR = "/mnt/data/output"
 os.makedirs(SAVE_DIR, exist_ok=True)
+
+filelist_path = os.path.join(DATA_DIR, "filelist.txt")
+os.makedirs(DATA_DIR, exist_ok=True)
+
+# Download filelist to PVC
+if not os.path.exists(filelist_path):
+    subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
+
+# Download parquet files into PVC
+if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
+    print("Downloading JetClass-II parquet files...")
+    subprocess.run(["wget", "-i", filelist_path, "-P", DATA_DIR], check=True)
+
 
 if torch.cuda.is_available():
     device = torch.device("cuda")
 else:
     device = torch.device("cpu")
 
-full_dataset = JetDataset("JetClassII_example.parquet", max_num_particles=128)
+full_dataset = JetDataset(filelist_path, max_num_particles=128)
 
 N = len(full_dataset)
 train_size = int(0.45 * N)
@@ -109,16 +124,14 @@ for epoch in range(EPOCHS):
 
   print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
   # save best models
-# Save best model (lowest val loss)
-if avg_val_loss < best_val_loss:
-    best_val_loss = avg_val_loss
-    best_val_loss_epoch = epoch + 1
-    torch.save(model.state_dict(), os.path.join(SAVE_DIR, f"best_model_loss_epoch{epoch+1}.pt"))
-
-# Track best accuracy (optional)
-if val_accuracy > best_val_acc:
-    best_val_acc = val_accuracy
-    best_val_acc_epoch = epoch + 1
+  if avg_val_loss < best_val_loss:
+        best_val_loss = avg_val_loss
+        best_val_loss_epoch = epoch + 1
+        torch.save(model.state_dict(), os.path.join(SAVE_DIR, f"best_model_loss_epoch{epoch+1}.pt"))
+        
+  if val_accuracy > best_val_acc:
+        best_val_acc = val_accuracy
+        best_val_acc_epoch = epoch + 1
 
 
 # plt.figure(figsize=(10, 6))

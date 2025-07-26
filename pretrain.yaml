@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tn-job-pretrain-backbone
+  namespace: cms-ml
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: tn-pretrain-backbone
+        image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+        command:
+        - sh
+        - -c
+        - |
+          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          pip install --upgrade pip && \
+          pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
+                      weaver-core jetnet tensorboard && \
+          mkdir -p /mnt/data/output && \
+          python train.py
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        - name: jet-pvc
+          mountPath: /mnt/data
+        resources:
+          limits:
+            memory: "8Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: "8Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+
+      initContainers:
+      - name: init-clone-repo
+        image: alpine/git
+        args:
+        - clone
+        - --single-branch
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        resources:
+          limits:
+            memory: "900Mi"
+            cpu: "1"
+          requests:
+            memory: "900Mi"
+            cpu: "1"
+
+      volumes:
+      - name: git-repo
+        emptyDir: {}
+      - name: jet-pvc
+        persistentVolumeClaim:
+          claimName: tn-pvc
+
+  backoffLimit: 3
