@@ -29,7 +29,8 @@ def read_file(
     particle_features,
     jet_features,
     labels,
-    max_num_particles=128
+    max_num_particles=128,
+    max_num_jets=2
 ):
   def pad(a, maxlen, value=0, dtype='float32'):
     if isinstance(a, np.ndarray) and a.ndim>=2 and a.shape[1] == maxlen:
@@ -61,8 +62,6 @@ def read_file(
   table["part_eta"] = p4.eta
   table["part_phi"] = p4.phi
 
-
-  max_num_jets = 2
   x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_jets)) for n in particle_features], axis=1)
   x_particles = np.transpose(x_particles, (0, 2, 1))
   x_jets = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_jets)) for n in jet_features], axis=1)
