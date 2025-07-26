@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-debug
+  namespace: cms-ml
+spec:
+  containers:
+  - name: pvc-debugger
+    image: ubuntu
+    command: [ "sleep", "3600" ]
+    volumeMounts:
+    - mountPath: /mnt/data
+      name: jet-pvc
+  volumes:
+  - name: jet-pvc
+    persistentVolumeClaim:
+      claimName: tn-pvc
+  restartPolicy: Never

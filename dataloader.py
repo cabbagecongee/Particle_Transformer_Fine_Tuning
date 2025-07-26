@@ -74,29 +74,28 @@ def read_file(
   return x_particles, x_jets, y
 
 
-# class JetDataset(torch.utils.data.Dataset):
-#   def __init__(self, parquet_file, max_num_particles=128):
-#     self.x_particles, self.x_jets, self.labels = read_file(
-#         filepath=parquet_file,
-#         particle_features=constituent_keys,
-#         jet_features=hlf_keys,
-#         labels=label_key
-#         )
-#   def __len__(self):
-#     return len(self.labels)
+class JetDataset(torch.utils.data.Dataset):
+  def __init__(self, parquet_file, max_num_particles=128):
+    self.x_particles, self.x_jets, self.labels = read_file(
+        filepath=parquet_file,
+        particle_features=constituent_keys,
+        jet_features=hlf_keys,
+        labels=label_key
+        )
+  def __len__(self):
+    return len(self.labels)
 
-#   def __getitem__(self, idx):
-#     return (
-#         torch.tensor(self.x_particles[idx], dtype=torch.float),
-#         torch.tensor(self.x_jets[idx], dtype=torch.float),
-#         torch.tensor(self.labels[idx], dtype=torch.long)
-#     )
+  def __getitem__(self, idx):
+    return (
+        torch.tensor(self.x_particles[idx], dtype=torch.float),
+        torch.tensor(self.x_jets[idx], dtype=torch.float),
+        torch.tensor(self.labels[idx], dtype=torch.long)
+    )
 
 
-class JetDataset(IterableDataset):
-  def __init__(self, filelist_path, max_num_particles=128, shuffle_files=True):
-    with open(filelist_path, "r") as f:
-      self.filepaths = [line.strip() for line in f.readlines()]
+class IterableJetDataset(IterableDataset):
+  def __init__(self, filepaths, max_num_particles=128, shuffle_files=True):
+    self.filepaths = filepaths
     self.shuffle_files = shuffle_files
     self.max_num_particles = max_num_particles
 

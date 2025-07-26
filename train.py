@@ -13,8 +13,9 @@ from torch.optim import RAdam
 from torch.optim.lr_scheduler import LambdaLR
 from torch.utils.data import random_split
 from model import ParticleTransformerBackbone, ParticleTransformer
-from dataloader import JetDataset
+from dataloader import JetDataset, IterableJetDataset
 import subprocess
+import random
 
 
 BATCH_SIZE = 512
@@ -34,7 +35,7 @@ if not os.path.exists(filelist_path):
 # Download parquet files into PVC
 if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
     print("Downloading JetClass-II parquet files...")
-    subprocess.run(["wget", "-i", filelist_path, "-P", DATA_DIR], check=True)
+    subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 
 
 if torch.cuda.is_available():
@@ -42,18 +43,32 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-full_dataset = JetDataset(filelist_path, max_num_particles=128)
+# full_dataset = JetDataset(filelist_path, max_num_particles=128)
 
-N = len(full_dataset)
-train_size = int(0.45 * N)
-val_size = int(0.05 * N)
-test_size = N - train_size - val_size
-train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
-# train_dataset, val_dataset = random_split(full_dataset, [0., 0.1])
+# N = len(full_dataset)
+# train_size = int(0.45 * N)
+# val_size = int(0.05 * N)
+# test_size = N - train_size - val_size
+# train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
+# # train_dataset, val_dataset = random_split(full_dataset, [0., 0.1])
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+with open(filelist_path, "r") as f:
+    filepaths = [line.strip() for line in f.readlines()]
+
+random.shuffle(filepaths)
+n = len(filepaths)
+
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.5*n)]
+test_files = filepaths[int(0.5*n):]
+
+train_dataset = IterableJetDataset(train_files)
+val_dataset = IterableJetDataset(val_files)
+test_dataset = IterableJetDataset(test_files)
+
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, prefetch_factor=4)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2, prefetch_factor=4)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2, prefetch_factor=4)
 
 
 model = ParticleTransformerBackbone(
