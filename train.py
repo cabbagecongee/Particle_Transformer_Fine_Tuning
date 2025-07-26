@@ -66,9 +66,9 @@ train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
 test_dataset = IterableJetDataset(test_files)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2, prefetch_factor=4)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2, prefetch_factor=4)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2, prefetch_factor=4)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=2, prefetch_factor=4)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=2, prefetch_factor=4)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=2, prefetch_factor=4)
 
 
 model = ParticleTransformerBackbone(

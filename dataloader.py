@@ -94,7 +94,7 @@ class JetDataset(torch.utils.data.Dataset):
 
 
 class IterableJetDataset(IterableDataset):
-  def __init__(self, filepaths, max_num_particles=128, shuffle_files=True):
+  def __init__(self, filepaths, shuffle_files=True, max_num_particles=128):
     self.filepaths = filepaths
     self.shuffle_files = shuffle_files
     self.max_num_particles = max_num_particles
