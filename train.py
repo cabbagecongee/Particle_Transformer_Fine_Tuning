@@ -1,0 +1,171 @@
+# train the backbone
+
+#the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
+
+import os
+import torch
+import torch.nn as nn
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+import matplotlib.pyplot as plt
+from optimizer import Lookahead
+from torch.optim import RAdam
+from torch.optim.lr_scheduler import LambdaLR
+from torch.utils.data import random_split
+from model import ParticleTransformerBackbone, ParticleTransformer
+from dataloader import JetDataset
+
+
+BATCH_SIZE = 512
+LR = 1e-3
+EPOCHS = 100
+SAVE_DIR = "pretraining_output"
+os.makedirs(SAVE_DIR, exist_ok=True)
+
+if torch.cuda.is_available():
+    device = torch.device("cuda")
+else:
+    device = torch.device("cpu")
+
+full_dataset = JetDataset("JetClassII_example.parquet", max_num_particles=128)
+
+N = len(full_dataset)
+train_size = int(0.45 * N)
+val_size = int(0.05 * N)
+test_size = N - train_size - val_size
+train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
+# train_dataset, val_dataset = random_split(full_dataset, [0., 0.1])
+
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, num_workers=2)
+
+
+model = ParticleTransformerBackbone(
+    input_dim=19,          # number of particle features
+    num_classes=188,       # number of jet classes in JetClassII
+    use_hlfs = False
+  ).to(device)
+
+
+def warmup_schedule(step, warmup_steps=1000):
+    return min(1.0, step / warmup_steps)
+
+base_optimizer = RAdam(model.parameters(), lr=1e-3, betas=(0.95, 0.999), eps=1e-5)
+optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
+scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
+criterion = nn.CrossEntropyLoss()
+
+
+acc = []
+val_acc = []
+best_val_loss = float('inf')
+best_val_acc = 0.0
+best_val_loss_epoch = -1
+best_val_acc_epoch = -1
+
+
+for epoch in range(EPOCHS):
+  model.train()
+  total_loss = 0.0
+  correct = 0
+  total = 0
+
+  for x_particles, x_jets, labels in tqdm(train_loader):
+    x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
+    optimizer.zero_grad()
+    outputs = model(x_particles.transpose(1, 2))
+    loss = criterion(outputs, labels)
+    loss.backward()
+    optimizer.step()
+    scheduler.step()
+
+    total_loss += loss.item()
+    _, pred = outputs.max(1)
+    correct += (pred == labels).sum().item()
+    total += labels.size(0)
+  acc.append(correct/total)
+  print(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {total_loss/total:.4f}, Train Accuracy: {correct/total:.4f}")
+
+  #validation
+  model.eval()
+  val_loss = 0.0
+  val_correct = 0
+  val_total = 0
+  with torch.inference_mode():
+      for x_particles, x_jets, labels in val_loader:
+          x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
+          outputs = model(x_particles.transpose(1, 2))
+          loss = criterion(outputs, labels)
+          val_loss += loss.item()
+
+          _, pred = outputs.max(1)
+          val_correct += (pred == labels).sum().item()
+          val_total += labels.size(0)
+
+  avg_val_loss = val_loss / val_total
+  val_accuracy = val_correct / val_total
+  val_acc.append(val_accuracy)
+
+  print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+  # save best models
+# Save best model (lowest val loss)
+if avg_val_loss < best_val_loss:
+    best_val_loss = avg_val_loss
+    best_val_loss_epoch = epoch + 1
+    torch.save(model.state_dict(), os.path.join(SAVE_DIR, f"best_model_loss_epoch{epoch+1}.pt"))
+
+# Track best accuracy (optional)
+if val_accuracy > best_val_acc:
+    best_val_acc = val_accuracy
+    best_val_acc_epoch = epoch + 1
+
+
+# plt.figure(figsize=(10, 6))
+# plt.plot(range(1, EPOCHS + 1), acc, marker='o', label="Train Acc")
+# plt.plot(range(1, EPOCHS + 1), val_acc, marker='s', label="Val Acc")
+# plt.xlabel("Epoch")
+# plt.ylabel("Accuracy")
+# plt.title("Training & Validation Accuracy over Epochs")
+# plt.grid(True)
+# plt.legend()
+# plt.tight_layout()
+# plt.show()
+
+# plt.figure(figsize=(8, 5))
+# plt.plot(range(1, EPOCHS + 1), acc, marker='o')
+# plt.xlabel("Epoch")
+# plt.ylabel("Accuracy")
+# plt.title("Training Accuracy over Epochs")
+# plt.grid(True)
+# plt.tight_layout()
+# plt.show()
+
+plt.figure(figsize=(10, 6))
+epochs = range(1, EPOCHS + 1)
+plt.plot(epochs, acc, marker='o', label="Train Acc")
+plt.plot(epochs, val_acc, marker='s', label="Val Acc")
+
+# Annotate best val acc and loss
+plt.annotate(f"Best Val Acc: {best_val_acc:.3f} (Epoch {best_val_acc_epoch})",
+             xy=(best_val_acc_epoch, val_acc[best_val_acc_epoch - 1]),
+             xytext=(best_val_acc_epoch, val_acc[best_val_acc_epoch - 1] + 0.05),
+             arrowprops=dict(arrowstyle="->"))
+
+plt.annotate(f"Best Val Loss: {best_val_loss:.4f} (Epoch {best_val_loss_epoch})",
+             xy=(best_val_loss_epoch, val_acc[best_val_loss_epoch - 1]),
+             xytext=(best_val_loss_epoch, val_acc[best_val_loss_epoch - 1] - 0.05),
+             arrowprops=dict(arrowstyle="->"))
+
+plt.xlabel("Epoch")
+plt.ylabel("Accuracy")
+plt.title("Training & Validation Accuracy over Epochs")
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+
+# Save to PVC
+plot_path = os.path.join(SAVE_DIR, "accuracy_plot.png")
+plt.savefig(plot_path)
+print(f"[INFO] Saved accuracy plot to: {plot_path}")
+plt.show()
