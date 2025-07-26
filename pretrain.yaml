@@ -21,7 +21,7 @@ spec:
           pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
                       weaver-core jetnet tensorboard && \
           pip install aiohttp requests &&\
-          pip install -U pyarrow &&\
+          pip install pyarrow==14.0.1 &&\
           mkdir -p /mnt/data/output && \
           python train.py
         volumeMounts:
