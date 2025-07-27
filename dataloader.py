@@ -1,4 +1,3 @@
-
 #reference: https://github.com/jet-universe/particle_transformer/blob/main/dataloader.py
 
 import numpy as np
@@ -8,6 +7,7 @@ import vector
 import torch
 from torch.utils.data import IterableDataset
 import random
+import time # Import the time module
 
 vector.register_awkward()
 
@@ -29,8 +29,7 @@ def read_file(
     particle_features,
     jet_features,
     labels,
-    max_num_particles=128,
-    max_num_jets=2
+    max_num_particles=128
 ):
   def pad(a, maxlen, value=0, dtype='float32'):
     if isinstance(a, np.ndarray) and a.ndim>=2 and a.shape[1] == maxlen:
@@ -62,13 +61,12 @@ def read_file(
   table["part_eta"] = p4.eta
   table["part_phi"] = p4.phi
 
-  x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_jets)) for n in particle_features], axis=1)
+  x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_particles)) for n in particle_features], axis=1)
   x_particles = np.transpose(x_particles, (0, 2, 1))
-  x_jets = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_jets)) for n in jet_features], axis=1)
-  x_jets = np.transpose(x_jets, (0, 2, 1))
+
+  x_jets = np.stack([ak.to_numpy(table[n]) for n in jet_features], axis=1)
 
   y = ak.to_numpy(table[label_key]).astype('int64')
-  # y = np.stack([ak.to_numpy(pad(table[label_key], maxlen=max_num_jets, value=-1, dtype='int64'))], axis=1)
 
   return x_particles, x_jets, y
 
@@ -99,13 +97,24 @@ class IterableJetDataset(IterableDataset):
     self.max_num_particles = max_num_particles
 
   def parse_files(self, filepath):
-    x_particles, x_jets, labels = read_file(
-        filepath=filepath,
-        particle_features=constituent_keys,
-        jet_features=hlf_keys,
-        labels=label_key,
-        max_num_particles=self.max_num_particles
-    )
+    start_time = time.time() 
+    try:
+      x_particles, x_jets, labels = read_file(
+          filepath=filepath,
+          particle_features=constituent_keys,
+          jet_features=hlf_keys,
+          labels=label_key,
+          max_num_particles=self.max_num_particles,
+      )
+      end_time = time.time()
+      print(f"[INFO] Finished reading {filepath} in {end_time - start_time:.2f} seconds. Found {len(labels)} jets.") # Print timing and number of jets
+    except Exception as e:
+            print(f"[ERROR] Failed to load {filepath}: {e}")
+            return
+
+    if len(labels) == 0:
+      print(f"[WARN] No jets in file: {filepath}")
+      return
     for i in range(len(labels)):
       yield(
           torch.tensor(x_particles[i], dtype=torch.float),

@@ -43,15 +43,6 @@ if torch.cuda.is_available():
 else:
     device = torch.device("cpu")
 
-# full_dataset = JetDataset(filelist_path, max_num_particles=128)
-
-# N = len(full_dataset)
-# train_size = int(0.45 * N)
-# val_size = int(0.05 * N)
-# test_size = N - train_size - val_size
-# train_dataset, val_dataset, test_dataset = random_split(full_dataset, [train_size, val_size, test_size])
-# # train_dataset, val_dataset = random_split(full_dataset, [0., 0.1])
-
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
 
@@ -62,13 +53,17 @@ train_files = filepaths[:int(0.45*n)]
 val_files = filepaths[int(0.45*n):int(0.5*n)]
 test_files = filepaths[int(0.5*n):]
 
+print(f"Total files found: {len(filepaths)}")
+print(f"Number of training files: {len(train_files)}")
+print(f"Number of validation files: {len(val_files)}")
+
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
 test_dataset = IterableJetDataset(test_files)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=1)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=1)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=1)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=8)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=8)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=8)
 
 
 model = ParticleTransformerBackbone(
@@ -94,34 +89,72 @@ best_val_acc = 0.0
 best_val_loss_epoch = -1
 best_val_acc_epoch = -1
 
+# print("[INFO] Starting training loop...")
+# for epoch in range(EPOCHS):
+#   print(f"\n[INFO] --- Starting Epoch {epoch+1}/{EPOCHS} ---")
+#   model.train()
+#   total_loss = 0.0
+#   correct = 0
+#   total = 0
+#   print(f"[INFO] Entering training data iteration for Epoch {epoch+1}")
 
+#   for x_particles, x_jets, labels in tqdm(train_loader):
+#     x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
+#     optimizer.zero_grad()
+#     outputs = model(x_particles.transpose(1, 2))
+#     loss = criterion(outputs, labels)
+#     loss.backward()
+#     optimizer.step()
+#     scheduler.step()
+
+#     total_loss += loss.item()
+#     _, pred = outputs.max(1)
+#     correct += (pred == labels).sum().item()
+#     total += labels.size(0)
+#   acc.append(correct/total)
+#   print(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {total_loss/total:.4f}, Train Accuracy: {correct/total:.4f}")
+
+print("[INFO] Starting training loop...")
 for epoch in range(EPOCHS):
+  print(f"\n[INFO] --- Starting Epoch {epoch+1}/{EPOCHS} ---")
   model.train()
   total_loss = 0.0
   correct = 0
   total = 0
+  print(f"[INFO] Entering training data iteration for Epoch {epoch+1}")
+  for batch_idx, (x_particles, x_jets, labels) in tqdm(enumerate(train_loader), total=len(train_files), desc=f"Epoch {epoch+1}/{EPOCHS}"):
+    print(f"[DEBUG] Processing batch {batch_idx} in Epoch {epoch+1}")
+    try:
+        # print(f"[DEBUG] Batch {batch_idx}: x_particles = {x_particles.shape}, labels = {labels.shape}")
+        x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
+        optimizer.zero_grad()
+        outputs = model(x_particles.transpose(1, 2))
+        # print(f"[DEBUG] outputs.shape = {outputs.shape}")
+        # print(f"[DEBUG] labels = {labels[:5]}")
+        loss = criterion(outputs, labels)
+        loss.backward()
+        optimizer.step()
+        # scheduler.step()
 
-  for x_particles, x_jets, labels in tqdm(train_loader):
-    x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
-    optimizer.zero_grad()
-    outputs = model(x_particles.transpose(1, 2))
-    loss = criterion(outputs, labels)
-    loss.backward()
-    optimizer.step()
-    scheduler.step()
+        total_loss += loss.item()
+        _, pred = outputs.max(1)
+        correct += (pred == labels).sum().item()
+        total += labels.size(0)
+    except Exception as e:
+        print(f"[ERROR] Exception in training loop: {e}")
+        break
+    print(f"[DEBUG] Finished processing batch {batch_idx} in Epoch {epoch+1}")
 
-    total_loss += loss.item()
-    _, pred = outputs.max(1)
-    correct += (pred == labels).sum().item()
-    total += labels.size(0)
   acc.append(correct/total)
+  print(f"[DEBUG] total={total}, total_loss={total_loss}, correct={correct}")
   print(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {total_loss/total:.4f}, Train Accuracy: {correct/total:.4f}")
 
-  #validation
+
   model.eval()
   val_loss = 0.0
   val_correct = 0
   val_total = 0
+  print(f"[INFO] Entering validation data iteration for Epoch {epoch+1}")
   with torch.inference_mode():
       for x_particles, x_jets, labels in val_loader:
           x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
@@ -132,6 +165,7 @@ for epoch in range(EPOCHS):
           _, pred = outputs.max(1)
           val_correct += (pred == labels).sum().item()
           val_total += labels.size(0)
+  print(f"[INFO] Finished validation data iteration for Epoch {epoch+1}")
 
   avg_val_loss = val_loss / val_total
   val_accuracy = val_correct / val_total
@@ -143,11 +177,42 @@ for epoch in range(EPOCHS):
         best_val_loss = avg_val_loss
         best_val_loss_epoch = epoch + 1
         torch.save(model.state_dict(), os.path.join(SAVE_DIR, f"best_model_loss_epoch{epoch+1}.pt"))
-        
+
   if val_accuracy > best_val_acc:
         best_val_acc = val_accuracy
         best_val_acc_epoch = epoch + 1
 
+
+#   #validation
+#   model.eval()
+#   val_loss = 0.0
+#   val_correct = 0
+#   val_total = 0
+#   with torch.inference_mode():
+#       for x_particles, x_jets, labels in val_loader:
+#           x_particles, x_jets, labels = x_particles.to(device), x_jets.to(device), labels.to(device)
+#           outputs = model(x_particles.transpose(1, 2))
+#           loss = criterion(outputs, labels)
+#           val_loss += loss.item()
+
+#           _, pred = outputs.max(1)
+#           val_correct += (pred == labels).sum().item()
+#           val_total += labels.size(0)
+
+#   avg_val_loss = val_loss / val_total
+#   val_accuracy = val_correct / val_total
+#   val_acc.append(val_accuracy)
+
+#   print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+#   # save best models
+#   if avg_val_loss < best_val_loss:
+#         best_val_loss = avg_val_loss
+#         best_val_loss_epoch = epoch + 1
+#         torch.save(model.state_dict(), os.path.join(SAVE_DIR, f"best_model_loss_epoch{epoch+1}.pt"))
+        
+#   if val_accuracy > best_val_acc:
+#         best_val_acc = val_accuracy
+#         best_val_acc_epoch = epoch + 1
 
 # plt.figure(figsize=(10, 6))
 # plt.plot(range(1, EPOCHS + 1), acc, marker='o', label="Train Acc")
