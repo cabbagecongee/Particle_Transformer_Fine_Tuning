@@ -18,7 +18,7 @@ import subprocess
 import random
 
 
-BATCH_SIZE = 512
+BATCH_SIZE = 128
 LR = 1e-3
 EPOCHS = 100
 DATA_DIR = "/mnt/data/jet_data"
@@ -147,7 +147,14 @@ for epoch in range(EPOCHS):
 
   acc.append(correct/total)
   print(f"[DEBUG] total={total}, total_loss={total_loss}, correct={correct}")
-  print(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {total_loss/total:.4f}, Train Accuracy: {correct/total:.4f}")
+  if total > 0:
+        epoch_loss = total_loss / total
+        epoch_acc = correct / total
+        acc.append(epoch_acc)
+        print(f"Epoch {epoch+1}/{EPOCHS}, Train Loss: {epoch_loss:.4f}, Train Accuracy: {epoch_acc:.4f}")
+  else:
+        print(f"[WARNING] Skipped Epoch {epoch+1} due to OOM or no successful batches.")
+        acc.append(0.0)
 
 
   model.eval()
@@ -167,9 +174,12 @@ for epoch in range(EPOCHS):
           val_total += labels.size(0)
   print(f"[INFO] Finished validation data iteration for Epoch {epoch+1}")
 
-  avg_val_loss = val_loss / val_total
-  val_accuracy = val_correct / val_total
-  val_acc.append(val_accuracy)
+  if val_total > 0:
+    avg_val_loss = val_loss / val_total
+    val_accuracy = val_correct / val_total
+    val_acc.append(val_accuracy)
+    print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+    
 
   print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
   # save best models
