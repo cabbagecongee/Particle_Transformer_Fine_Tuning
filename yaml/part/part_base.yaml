@@ -1,0 +1,88 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tn-job-part-base
+  namespace: cms-ml
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: tn-job-part-base
+        image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+        command:
+        - sh
+        - -c
+        - |
+          apt update && \
+          apt install -y wget && \
+          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          echo "[INFO] Installing Python packages..." && \
+          pip install --upgrade pip && \
+          pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
+                      weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
+          echo "[INFO] Checking GPU availability..." && \
+          nvidia-smi && \
+          mkdir -p /mnt/data/output && \
+          python part_base_train.py
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        - name: tn-pvc-part-base
+          mountPath: /mnt/data
+        resources:
+          limits:
+            memory: "16Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: "16Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+
+      initContainers:
+      - name: init-clone-repo
+        image: alpine/git
+        args:
+        - clone
+        - --single-branch
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        resources:
+          limits:
+            memory: "900Mi"
+            cpu: "1"
+          requests:
+            memory: "900Mi"
+            cpu: "1"
+
+      volumes:
+      - name: git-repo
+        emptyDir: {}
+      - name: tn-pvc-part-base
+        persistentVolumeClaim:
+          claimName: tn-pvc-part-base
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - gpn-fiona-mizzou-2.rnet.missouri.edu
+                  - rci-nrp-gpu-05.sdsu.edu
+                  - node-2-2.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-GeForce-RTX-4090
+                  - NVIDIA-GeForce-RTX-3090
+                  - NVIDIA-A10
+                  - NVIDIA-TITAN-RTX
+                  - NVIDIA-RTX-A5000

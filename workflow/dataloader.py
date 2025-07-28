@@ -29,7 +29,9 @@ def read_file(
     particle_features,
     jet_features,
     labels,
-    max_num_particles=128
+    max_num_particles=128,
+    allowed_labels=None, 
+    tau_labels=None
 ):
   def pad(a, maxlen, value=0, dtype='float32'):
     if isinstance(a, np.ndarray) and a.ndim>=2 and a.shape[1] == maxlen:
@@ -61,12 +63,18 @@ def read_file(
   table["part_eta"] = p4.eta
   table["part_phi"] = p4.phi
 
+  y = ak.to_numpy(table[label_key]).astype('int64')
+
+  if allowed_labels is not None:
+    mask = np.isin(y, list(allowed_labels))
+    table = table[mask]
+    y = y[mask]
+    y = np.array([1 if label in tau_labels else 0 for label in y])
+
   x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_particles)) for n in particle_features], axis=1)
   x_particles = np.transpose(x_particles, (0, 2, 1))
 
   x_jets = np.stack([ak.to_numpy(table[n]) for n in jet_features], axis=1)
-
-  y = ak.to_numpy(table[label_key]).astype('int64')
 
   return x_particles, x_jets, y
 
@@ -91,10 +99,13 @@ class JetDataset(torch.utils.data.Dataset):
 
 
 class IterableJetDataset(IterableDataset):
-  def __init__(self, filepaths, shuffle_files=True, max_num_particles=128):
+  def __init__(self, filepaths, shuffle_files=True, max_num_particles=128, allowed_labels=None, tau_labels=None):
     self.filepaths = filepaths
     self.shuffle_files = shuffle_files
     self.max_num_particles = max_num_particles
+    self.allowed_labels = allowed_labels
+    self.tau_labels = tau_labels
+
 
   def parse_files(self, filepath):
     start_time = time.time() 
@@ -105,6 +116,8 @@ class IterableJetDataset(IterableDataset):
           jet_features=hlf_keys,
           labels=label_key,
           max_num_particles=self.max_num_particles,
+          allowed_labels=self.allowed_labels, 
+          tau_labels=self.tau_labels
       )
       end_time = time.time()
       print(f"[INFO] Finished reading {filepath} in {end_time - start_time:.2f} seconds. Found {len(labels)} jets.") # Print timing and number of jets

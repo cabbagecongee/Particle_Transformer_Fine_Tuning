@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-access
+  namespace: cms-ml
+spec:
+  containers:
+  - name: shell
+    image: ubuntu:22.04
+    command: ["/bin/bash", "-c"]
+    args:
+      - |
+        apt update && \
+        DEBIAN_FRONTEND=noninteractive apt install -y less nano wget python3 curl && \
+        bash
+    stdin: true
+    tty: true
+    volumeMounts:
+    - mountPath: /mnt/data
+      name: tn-pvc-part-base
+  volumes:
+  - name: tn-pvc-part-base
+    persistentVolumeClaim:
+      claimName: tn-pvc-part-base
+  restartPolicy: Never
