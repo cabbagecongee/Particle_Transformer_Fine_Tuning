@@ -8,11 +8,11 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from workflow.optimizer import Lookahead
+from optimizer import Lookahead
 from torch.optim import RAdam
 from torch.optim.lr_scheduler import LambdaLR
-from workflow.model import ParticleTransformerBackbone
-from workflow.dataloader import IterableJetDataset
+from model import ParticleTransformerBackbone
+from dataloader import IterableJetDataset
 import subprocess
 import random
 from accelerate import Accelerator

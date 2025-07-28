@@ -25,7 +25,8 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          python train_faster.py
+          python "training files/train3.py"
+
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
