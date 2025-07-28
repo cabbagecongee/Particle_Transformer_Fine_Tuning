@@ -1,10 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: tn-pvc
+  name: tn-pvc-part-base
 spec:
   accessModes:
   - ReadWriteOnce
   resources:
     requests:
       storage: 920Gi
+
