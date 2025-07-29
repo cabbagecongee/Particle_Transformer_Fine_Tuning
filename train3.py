@@ -69,14 +69,17 @@ model = ParticleTransformerBackbone(
 def warmup_schedule(step, warmup_steps=1000):
     return min(1.0, step / warmup_steps)
 
-base_optimizer = RAdam(model.parameters(), lr=1e-3, betas=(0.95, 0.999), eps=1e-5)
-optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
-scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
 criterion = nn.CrossEntropyLoss()
 
-model, optimizer, train_loader, val_loader, test_loader, scheduler = accelerator.prepare(
-    model, optimizer, train_loader, val_loader, test_loader, scheduler
+model, train_loader, val_loader, test_loader = accelerator.prepare(
+    model, train_loader, val_loader, test_loader
 )
+
+base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
+optimizer = Lookahead(base_opt, k=6, alpha=0.5)
+scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
+optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
+
 
 acc = []
 val_acc = []
