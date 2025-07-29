@@ -20,12 +20,13 @@ spec:
           cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
           echo "[INFO] Installing Python packages..." && \
           pip install --upgrade pip && \
-          pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
+          pip install accelerate \
+                      numpy pandas matplotlib tqdm scikit-learn seaborn \
                       weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          python "training files/train3.py"
+          accelerate launch train3.py
 
         volumeMounts:
         - name: git-repo

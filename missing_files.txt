@@ -25,3 +25,5 @@ grep -F -f to_download.txt filelist.txt > urls_to_download.txt
 
 # Download the missing + corrupted files
 wget -c -i urls_to_download.txt -P .
+
+kubectl exec -it -n cms-ml <pod_name> -- bash

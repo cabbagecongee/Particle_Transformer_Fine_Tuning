@@ -17,7 +17,7 @@ import subprocess
 import random
 from accelerate import Accelerator
 
-BATCH_SIZE = 512
+BATCH_SIZE = 364
 LR = 1e-3
 EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
@@ -55,9 +55,9 @@ train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
 test_dataset = IterableJetDataset(test_files)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=8)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=8)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=8)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
 
 
 model = ParticleTransformerBackbone(
