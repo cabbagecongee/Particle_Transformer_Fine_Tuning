@@ -93,7 +93,7 @@ best_val_acc_epoch = -1
 for epoch in range(EPOCHS):
   model.train()
   total, correct, total_loss = 0, 0, 0
-  for x_particles, x_jets, labels in tqdm(length_train): #get the length of the train loader
+  for x_particles, x_jets, labels in tqdm(range(length_train)): #get the length of the train loader
     optimizer.zero_grad()
     outputs = model(x_particles.transpose(1, 2))
     loss = criterion(outputs, labels)
