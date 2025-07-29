@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-job-part-base
+  name: tn-job-part-base 
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -9,7 +9,7 @@ spec:
     spec:
       restartPolicy: Never
       containers:
-      - name: tn-job-part-base
+      - name: tn-job-part-base 
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         command:
         - sh
@@ -19,13 +19,15 @@ spec:
           apt install -y wget && \
           cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
           echo "[INFO] Installing Python packages..." && \
+          pip install --upgrade pip && \
           pip install accelerate \
                       numpy pandas matplotlib tqdm scikit-learn seaborn \
                       weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          python part_base_train.py
+          accelerate launch train3.py
+
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
