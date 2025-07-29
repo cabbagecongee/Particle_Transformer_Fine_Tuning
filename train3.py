@@ -17,7 +17,7 @@ import subprocess
 import random
 from accelerate import Accelerator
 
-BATCH_SIZE = 364
+BATCH_SIZE = 512
 LR = 1e-3
 EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
