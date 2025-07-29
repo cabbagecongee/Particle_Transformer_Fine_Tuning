@@ -7,8 +7,6 @@ import vector
 import torch
 from torch.utils.data import IterableDataset
 import random
-import time # Import the time module
-
 vector.register_awkward()
 
 constituent_keys = [
@@ -108,26 +106,15 @@ class IterableJetDataset(IterableDataset):
 
 
   def parse_files(self, filepath):
-    start_time = time.time() 
-    try:
-      x_particles, x_jets, labels = read_file(
-          filepath=filepath,
-          particle_features=constituent_keys,
-          jet_features=hlf_keys,
-          labels=label_key,
-          max_num_particles=self.max_num_particles,
-          allowed_labels=self.allowed_labels, 
-          tau_labels=self.tau_labels
+    x_particles, x_jets, labels = read_file(
+      filepath=filepath,
+      particle_features=constituent_keys,
+      jet_features=hlf_keys,
+      labels=label_key,
+      max_num_particles=self.max_num_particles,
+      allowed_labels=self.allowed_labels, 
+      tau_labels=self.tau_labels
       )
-      end_time = time.time()
-      print(f"[INFO] Finished reading {filepath} in {end_time - start_time:.2f} seconds. Found {len(labels)} jets.") # Print timing and number of jets
-    except Exception as e:
-            print(f"[ERROR] Failed to load {filepath}: {e}")
-            return
-
-    if len(labels) == 0:
-      print(f"[WARN] No jets in file: {filepath}")
-      return
     for i in range(len(labels)):
       yield(
           torch.tensor(x_particles[i], dtype=torch.float),
