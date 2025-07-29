@@ -19,8 +19,8 @@ spec:
           apt install -y wget && \
           cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
           echo "[INFO] Installing Python packages..." && \
-          pip install --upgrade pip && \
-          pip install numpy pandas matplotlib tqdm scikit-learn seaborn \
+          pip install accelerate \
+                      numpy pandas matplotlib tqdm scikit-learn seaborn \
                       weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
