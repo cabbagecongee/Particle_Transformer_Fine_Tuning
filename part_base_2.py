@@ -25,12 +25,15 @@ FINAL_LR = 0.01
 DECAY_INTERVAL = 20000
 WARMUP_ITERS = 100000
 
+
+
 expected_updates = EPOCHS * 1000000
 n_decays = max(1, math.ceil((expected_updates - WARMUP_ITERS)/DECAY_INTERVAL))
 gamma = FINAL_LR ** (1.0/n_decays)
 
 
 accelerator = Accelerator()
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 if accelerator.is_main_process:
     os.makedirs(SAVE_DIR, exist_ok=True)
