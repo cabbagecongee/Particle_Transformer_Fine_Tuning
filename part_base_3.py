@@ -1,4 +1,4 @@
-#changed model layers to 4
+#changed model to 4 layers and training split is 25% validation 5%
 
 import os
 import subprocess
@@ -35,7 +35,7 @@ gamma = FINAL_LR ** (1.0/n_decays)
 
 
 accelerator = Accelerator()
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_2.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_3.csv")
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 
 if accelerator.is_main_process:
@@ -74,8 +74,8 @@ ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.45*n)]
-val_files = filepaths[int(0.45*n):int(0.5*n)]
+train_files = filepaths[:int(0.25*n)]
+val_files = filepaths[int(0.25*n):int(0.3*n)]
 # test_files = filepaths[int(0.5*n):]
 
 
@@ -92,8 +92,8 @@ length_train = len(train_files) * 100000
 model = ParticleTransformerBackbone(
     input_dim=19,        
     num_classes=2, 
-    pair_input_dim=4,   
-    num_layers=4,
+    pair_input_dim=4, 
+    num_layers=4,  
     use_hlfs = False
 )
 
@@ -183,7 +183,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base_2_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_3_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -192,7 +192,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base_2_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_3_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -219,7 +219,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "base_2_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_3_accuracy_plot.png")
     plt.savefig(plot_path)
     plt.show()
 
@@ -233,10 +233,10 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, "base_2_loss_curve.png"))
+    plt.savefig(os.path.join(SAVE_DIR, "base_3_loss_curve.png"))
     plt.show()
 
-    plot_path = os.path.join(SAVE_DIR, "base_2_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_3_loss_plot.png")
     plt.savefig(plot_path)
     plt.show()
 
