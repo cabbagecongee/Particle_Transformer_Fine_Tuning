@@ -1,9 +1,5 @@
-#changes: change training split to (25%), validation(5%), test (70%)
-# train the backbone
-
-#the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
-
 import os
+import subprocess
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -12,25 +8,30 @@ import matplotlib.pyplot as plt
 from optimizer import Lookahead
 from torch.optim import RAdam
 from torch.optim.lr_scheduler import LambdaLR
-from model import ParticleTransformerBackbone
+from model import ParticleTransformerBackbone, ParticleTransformer
 from dataloader import IterableJetDataset
-import subprocess
 import random
 from accelerate import Accelerator
+import math
 import csv
+
 
 BATCH_SIZE = 512
 LR = 1e-3
-EPOCHS = 50
+EPOCHS = 100
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
+FINAL_LR = 0.01
+DECAY_INTERVAL = 20000
+WARMUP_ITERS = 100000
 
-
-filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
+expected_updates = EPOCHS * 1000000
+n_decays = max(1, math.ceil((expected_updates - WARMUP_ITERS)/DECAY_INTERVAL))
+gamma = FINAL_LR ** (1.0/n_decays)
 
 
 accelerator = Accelerator()
+filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 if accelerator.is_main_process:
     os.makedirs(SAVE_DIR, exist_ok=True)
 
@@ -46,46 +47,64 @@ if accelerator.is_main_process:
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
+
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
+
+TAU_LABELS = set(
+    [12, 13, 14] +
+    list(range(22, 25)) +
+    list(range(38, 41)) +
+    list(range(67, 70)) +
+    list(range(80, 83)) +
+    list(range(103, 115)) +
+    list(range(143, 161))
+)
+
+QCD_LABELS = set(range(161, 188))
+
+ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
 
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.25*n)]
-val_files = filepaths[int(0.25*n):int(0.3*n)]
-test_files = filepaths[int(0.3*n):]
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.5*n)]
+# test_files = filepaths[int(0.5*n):]
 
-train_dataset = IterableJetDataset(train_files)
-val_dataset = IterableJetDataset(val_files)
-test_dataset = IterableJetDataset(test_files)
+
+train_dataset = IterableJetDataset(train_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
+val_dataset = IterableJetDataset(val_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
+# test_dataset = IterableJetDataset(test_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
+# test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
 
 length_train = len(train_files) * 100000
 
-
 model = ParticleTransformerBackbone(
-    input_dim=19,         
-    num_classes=188,      
+    input_dim=19,        
+    num_classes=2, 
+    pair_input_dim=4,   
     use_hlfs = False
-  )
-
-def warmup_schedule(step, warmup_steps=1000):
-    return min(1.0, step / warmup_steps)
-
-criterion = nn.CrossEntropyLoss()
-
-model, train_loader, val_loader, test_loader = accelerator.prepare(
-    model, train_loader, val_loader, test_loader
 )
 
-base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
-optimizer = Lookahead(base_opt, k=6, alpha=0.5)
+
+def warmup_schedule(step):
+    if step < WARMUP_ITERS:
+        return 1.0
+    intervals = (step - WARMUP_ITERS) // DECAY_INTERVAL
+    return gamma**intervals
+
+criterion = nn.CrossEntropyLoss()
+base_optimizer = RAdam(model.parameters(), lr=1e-3, betas=(0.95, 0.999), eps=1e-5)
+optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
+
+model, optimizer, train_loader, val_loader = accelerator.prepare(
+    model, optimizer, train_loader, val_loader
+)
 scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
-optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
 
 
 acc = []
@@ -94,8 +113,8 @@ val_losses = []
 train_losses = []
 best_val_loss = float('inf')
 best_val_acc = 0.0
-best_val_loss_epoch = -1
-best_val_acc_epoch = -1
+best_val_loss_epoch = 1
+best_val_acc_epoch = 1
 
 for epoch in range(EPOCHS):
   model.train()
@@ -115,7 +134,7 @@ for epoch in range(EPOCHS):
   corr_all = accelerator.gather(torch.tensor(correct, device=accelerator.device)).sum().item()
   tot_all  = accelerator.gather(torch.tensor(total,   device=accelerator.device)).sum().item()
   train_acc = corr_all / tot_all
-  
+
   acc.append(train_acc)
   train_losses.append(total_loss/total)
 
@@ -124,25 +143,26 @@ for epoch in range(EPOCHS):
 
 
   model.eval()
-  val_loss_acum = 0.0
+  val_loss = 0.0
   val_correct = 0
   val_total = 0
   with torch.inference_mode():
       for x_particles, x_jets, labels in val_loader:
           outputs = model(x_particles.transpose(1, 2))
           loss = criterion(outputs, labels)
-          val_loss_acum += loss.item() * labels.size(0)
+          val_loss += loss.item() * labels.size(0)
 
           _, pred = outputs.max(1)
           val_correct += (pred == labels).sum().item()
           val_total += labels.size(0)
-
-  val_loss_all    = accelerator.gather(torch.tensor(val_loss_acum,   device=accelerator.device)).sum().item()
+  # after the loop
+  val_loss_all    = accelerator.gather(torch.tensor(val_loss,   device=accelerator.device)).sum().item()
   val_total_all   = accelerator.gather(torch.tensor(val_total,  device=accelerator.device)).sum().item()
   val_correct_all = accelerator.gather(torch.tensor(val_correct,device=accelerator.device)).sum().item()
   avg_val_loss    = val_loss_all / val_total_all
-  val_losses.append(avg_val_loss)
   val_accuracy    = val_correct_all / val_total_all
+
+  val_losses.append(avg_val_loss)
 
   if val_total_all > 0:
     val_acc.append(val_accuracy)
@@ -156,7 +176,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_5_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_2_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -165,7 +185,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_5_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_2_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -192,7 +212,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "model_5_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_2_accuracy_plot.png")
     plt.savefig(plot_path)
     plt.show()
 
@@ -206,7 +226,10 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
+    plt.savefig(os.path.join(SAVE_DIR, "loss_curve.png"))
+    plt.show()
+
+    plot_path = os.path.join(SAVE_DIR, "base_2_loss_plot.png")
     plt.savefig(plot_path)
     plt.show()
 

@@ -1,5 +1,5 @@
-#changes: change training split to (25%), validation(5%), test (70%)
-# train the backbone
+#change model to 4 layers
+#keep training split 45%
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
 
@@ -27,7 +27,7 @@ SAVE_DIR = "/mnt/data/output"
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_7.csv")
 
 
 accelerator = Accelerator()
@@ -52,9 +52,9 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.25*n)]
-val_files = filepaths[int(0.25*n):int(0.3*n)]
-test_files = filepaths[int(0.3*n):]
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.5*n)]
+test_files = filepaths[int(0.5*n):]
 
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
@@ -156,7 +156,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_5_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -165,7 +165,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_5_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -192,7 +192,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "model_5_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_7_accuracy_plot.png")
     plt.savefig(plot_path)
     plt.show()
 
@@ -206,7 +206,10 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
+    plt.savefig(os.path.join(SAVE_DIR, "loss_curve.png"))
+    plt.show()
+
+    plot_path = os.path.join(SAVE_DIR, "model_7_loss_plot.png")
     plt.savefig(plot_path)
     plt.show()
 

@@ -1,5 +1,5 @@
 #change model to 4 layers
-#keep training split 45%
+#change training split to (25%), validation(5%), test (70%)
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
 
