@@ -1,0 +1,90 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tn-job-pretrain-backbone-4
+  namespace: cms-ml
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: tn-job-pretrain-backbone-4
+        image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+        command:
+        - sh
+        - -c
+        - |
+          apt update && \
+          apt install -y wget && \
+          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          echo "[INFO] Installing Python packages..." && \
+          pip install --upgrade pip && \
+          pip install accelerate \
+                      numpy pandas matplotlib tqdm scikit-learn seaborn \
+                      weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
+          echo "[INFO] Checking GPU availability..." && \
+          nvidia-smi && \
+          mkdir -p /mnt/data/output && \
+          accelerate launch train3.py
+
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        - name: tn-pvc-jetclass2-v4
+          mountPath: /mnt/data
+        resources:
+          limits:
+            memory: "32Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+          requests:
+            memory: "32Gi"
+            cpu: "1"
+            nvidia.com/gpu: "1"
+
+      initContainers:
+      - name: init-clone-repo
+        image: alpine/git
+        args:
+        - clone
+        - --single-branch
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        resources:
+          limits:
+            memory: "900Mi"
+            cpu: "1"
+          requests:
+            memory: "900Mi"
+            cpu: "1"
+
+      volumes:
+      - name: git-repo
+        emptyDir: {}
+      - name: tn-pvc-jetclass2-v4
+        persistentVolumeClaim:
+          claimName: tn-pvc-jetclass2-v4
+
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - gpn-fiona-mizzou-2.rnet.missouri.edu
+                  - rci-nrp-gpu-05.sdsu.edu
+                  - node-2-2.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - Tesla-V100-SXM2-32GB	
+                  - NVIDIA-A40	
+                  - NVIDIA-L40
+                  - NVIDIA-RTX-A6000	
+                  - Quadro-RTX-8000	

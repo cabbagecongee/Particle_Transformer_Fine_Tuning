@@ -1,0 +1,12 @@
+#this is the pvc that will attach multiple jobs
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: tn-pvc-many-jetclass2
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 1000Gi
+

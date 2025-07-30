@@ -3,6 +3,7 @@ import numpy as np
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 
+
 def compute_roc_auc(labels, scores, target_class):
     sig = (labels == target_class).astype(int)
     fpr, tpr, _ = roc_curve(sig, scores)
