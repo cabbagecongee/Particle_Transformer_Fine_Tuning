@@ -1,3 +1,5 @@
+#change model to 4 layers
+#keep training split 45%
 #changes: change training split to (25%), validation(5%), test (70%)
 # train the backbone
 
@@ -17,7 +19,6 @@ from dataloader import IterableJetDataset
 import subprocess
 import random
 from accelerate import Accelerator
-import csv
 
 BATCH_SIZE = 512
 LR = 1e-3
@@ -25,10 +26,7 @@ EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
-
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
-
 
 accelerator = Accelerator()
 if accelerator.is_main_process:
@@ -52,9 +50,9 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.25*n)]
-val_files = filepaths[int(0.25*n):int(0.3*n)]
-test_files = filepaths[int(0.3*n):]
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.5*n)]
+test_files = filepaths[int(0.5*n):]
 
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
@@ -69,7 +67,8 @@ length_train = len(train_files) * 100000
 
 model = ParticleTransformerBackbone(
     input_dim=19,         
-    num_classes=188,      
+    num_classes=188,  
+    num_layers=4,    
     use_hlfs = False
   )
 
@@ -212,19 +211,3 @@ if accelerator.is_main_process:
     plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
     plt.savefig(plot_path)
     plt.show()
-
-if accelerator.is_main_process:
-    with open(metrics_path, "w", newline="") as csvfile:
-        writer = csv.writer(csvfile)
-        # Header
-        writer.writerow(["epoch", "train_loss", "val_loss", "train_acc", "val_acc"])
-        # One row per epoch
-        for epoch in range(EPOCHS):
-            writer.writerow([
-                epoch + 1,
-                train_losses[epoch],
-                val_losses[epoch],
-                acc[epoch],
-                val_acc[epoch]
-            ])
-    print(f"Saved metrics to {metrics_path}")
