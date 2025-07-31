@@ -106,11 +106,11 @@ def warmup_schedule(step):
 
 criterion = nn.CrossEntropyLoss()
 base_optimizer = RAdam(model.parameters(), lr=1e-3, betas=(0.95, 0.999), eps=1e-5)
-optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
 
-model, optimizer, train_loader, val_loader = accelerator.prepare(
-    model, optimizer, train_loader, val_loader
+model, base_optimizer, train_loader, val_loader = accelerator.prepare(
+    model, base_optimizer, train_loader, val_loader
 )
+optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
 scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
 
 
