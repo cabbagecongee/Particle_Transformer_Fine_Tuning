@@ -26,7 +26,7 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          accelerate launch part_base_2.py
+          accelerate launch --nproc_per_node <num_gpus> part_base_2.py
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo

@@ -14,7 +14,6 @@ from torch.optim import RAdam
 from torch.optim.lr_scheduler import LambdaLR
 from model import ParticleTransformerBackbone
 from dataloader import IterableJetDataset
-import subprocess
 import random
 from accelerate import Accelerator
 import csv
@@ -26,25 +25,11 @@ DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
-filelist_path = os.path.join(DATA_DIR, "filelist.txt")
+filelist_path = os.path.join(DATA_DIR, "filelist_local.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_6.csv")
 
 
 accelerator = Accelerator()
-if accelerator.is_main_process:
-    os.makedirs(SAVE_DIR, exist_ok=True)
-
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    # Download filelist to PVC
-    if not os.path.exists(filelist_path):
-        subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
-
-    # Download parquet files into PVC
-    if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
-        print("Downloading JetClass-II parquet files...")
-        subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
-accelerator.wait_for_everyone()
 
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
@@ -194,7 +179,6 @@ if accelerator.is_main_process:
 if accelerator.is_main_process:
     plot_path = os.path.join(SAVE_DIR, "model_6_accuracy_plot.png")
     plt.savefig(plot_path)
-    plt.show()
 
 if accelerator.is_main_process:
     plt.figure()
@@ -207,11 +191,9 @@ if accelerator.is_main_process:
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(os.path.join(SAVE_DIR, "loss_curve.png"))
-    plt.show()
 
     plot_path = os.path.join(SAVE_DIR, "model_6_loss_plot.png")
     plt.savefig(plot_path)
-    plt.show()
 
 if accelerator.is_main_process:
     with open(metrics_path, "w", newline="") as csvfile:
