@@ -141,7 +141,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_6_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -150,7 +150,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_6_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
