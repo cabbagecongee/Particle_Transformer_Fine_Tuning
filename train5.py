@@ -26,7 +26,7 @@ DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
-filelist_path = os.path.join(DATA_DIR, "filelist.txt")
+filelist_path = os.path.join(DATA_DIR, "filelist_local.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
 
@@ -211,7 +211,6 @@ if accelerator.is_main_process:
 if accelerator.is_main_process:
     plot_path = os.path.join(SAVE_DIR, "model_5_accuracy_plot.png")
     plt.savefig(plot_path)
-    plt.show()
 
 if accelerator.is_main_process:
     plt.figure()
@@ -225,7 +224,6 @@ if accelerator.is_main_process:
     plt.tight_layout()
     plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
     plt.savefig(plot_path)
-    plt.show()
 
 if accelerator.is_main_process:
     with open(metrics_path, "w", newline="") as csvfile:

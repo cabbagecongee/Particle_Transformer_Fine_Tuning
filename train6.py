@@ -190,7 +190,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, "loss_curve.png"))
+    plt.savefig(os.path.join(SAVE_DIR, "model_6_loss_curve.png"))
 
     plot_path = os.path.join(SAVE_DIR, "model_6_loss_plot.png")
     plt.savefig(plot_path)
