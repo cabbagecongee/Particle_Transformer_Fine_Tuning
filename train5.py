@@ -18,7 +18,7 @@ import subprocess
 import random
 from accelerate import Accelerator
 import csv
-
+from torch.distributed import DistributedDataParallel as DDP
 BATCH_SIZE = 512
 LR = 1e-3
 EPOCHS = 50
@@ -29,7 +29,7 @@ SAVE_DIR = "/mnt/data/output"
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
-accelerator = Accelerator(find_unused_parameters=True)
+accelerator = Accelerator()
 if accelerator.is_main_process:
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
@@ -74,14 +74,21 @@ model = ParticleTransformerBackbone(
     num_classes=188,      
     use_hlfs = False
   )
-
+model.to(accelerator.device)
+if accelerator.num_processes > 1:
+    model = DDP(
+        model,
+        device_ids=[accelerator.local_process_index],         
+        find_unused_parameters=True,
+    )
+    
 def warmup_schedule(step, warmup_steps=1000):
     return min(1.0, step / warmup_steps)
 
 criterion = nn.CrossEntropyLoss()
 
-model, train_loader, val_loader, test_loader = accelerator.prepare(
-    model, train_loader, val_loader, test_loader
+train_loader, val_loader, test_loader = accelerator.prepare(
+    train_loader, val_loader, test_loader
 )
 
 base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
