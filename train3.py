@@ -16,6 +16,9 @@ from dataloader import IterableJetDataset
 import subprocess
 import random
 from accelerate import Accelerator
+import csv
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 
 BATCH_SIZE = 512
 LR = 1e-3
@@ -23,24 +26,29 @@ EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
+
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
 accelerator = Accelerator()
 if accelerator.is_main_process:
+    os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
 
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    # Download filelist to PVC
     if not os.path.exists(filelist_path):
-        subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
-
-    # Download parquet files into PVC
+        subprocess.run([
+            "wget",
+            "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt",
+            "-O",
+            filelist_path
+        ], check=True)
+    
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
         print("Downloading JetClass-II parquet files...")
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
+# now read filepaths for splitting
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
 
@@ -67,14 +75,21 @@ model = ParticleTransformerBackbone(
     num_classes=188,      
     use_hlfs = False
   )
-
+model.to(accelerator.device)
+if accelerator.num_processes > 1:
+    model = DDP(
+        model,
+        device_ids=[accelerator.local_process_index],         
+        find_unused_parameters=True,
+    )
+    
 def warmup_schedule(step, warmup_steps=1000):
     return min(1.0, step / warmup_steps)
 
 criterion = nn.CrossEntropyLoss()
 
-model, train_loader, val_loader, test_loader = accelerator.prepare(
-    model, train_loader, val_loader, test_loader
+train_loader, val_loader, test_loader = accelerator.prepare(
+    train_loader, val_loader, test_loader
 )
 
 base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
@@ -85,6 +100,8 @@ optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
 
 acc = []
 val_acc = []
+val_losses = []
+train_losses = []
 best_val_loss = float('inf')
 best_val_acc = 0.0
 best_val_loss_epoch = -1
@@ -108,30 +125,33 @@ for epoch in range(EPOCHS):
   corr_all = accelerator.gather(torch.tensor(correct, device=accelerator.device)).sum().item()
   tot_all  = accelerator.gather(torch.tensor(total,   device=accelerator.device)).sum().item()
   train_acc = corr_all / tot_all
+  
   acc.append(train_acc)
+  train_losses.append(total_loss/total)
 
   if accelerator.is_main_process:
     print(f"Epoch {epoch+1}: Train Acc = {train_acc:.4f}")
 
 
   model.eval()
-  val_loss = 0.0
+  val_loss_acum = 0.0
   val_correct = 0
   val_total = 0
   with torch.inference_mode():
       for x_particles, x_jets, labels in val_loader:
           outputs = model(x_particles.transpose(1, 2))
           loss = criterion(outputs, labels)
-          val_loss += loss.item()
+          val_loss_acum += loss.item() * labels.size(0)
 
           _, pred = outputs.max(1)
           val_correct += (pred == labels).sum().item()
           val_total += labels.size(0)
-  # after the loop
-  val_loss_all    = accelerator.gather(torch.tensor(val_loss,   device=accelerator.device)).sum().item()
+
+  val_loss_all    = accelerator.gather(torch.tensor(val_loss_acum,   device=accelerator.device)).sum().item()
   val_total_all   = accelerator.gather(torch.tensor(val_total,  device=accelerator.device)).sum().item()
   val_correct_all = accelerator.gather(torch.tensor(val_correct,device=accelerator.device)).sum().item()
   avg_val_loss    = val_loss_all / val_total_all
+  val_losses.append(avg_val_loss)
   val_accuracy    = val_correct_all / val_total_all
 
   if val_total_all > 0:
@@ -146,7 +166,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_5_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -155,7 +175,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_5_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -182,6 +202,34 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_5_accuracy_plot.png")
     plt.savefig(plot_path)
-    plt.show()
+
+if accelerator.is_main_process:
+    plt.figure()
+    plt.plot(epochs, train_losses, marker='o', label="Train Loss")
+    plt.plot(epochs, val_losses,   marker='s', label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("Loss")
+    plt.title("Training and Validation Loss")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
+    plt.savefig(plot_path)
+
+if accelerator.is_main_process:
+    with open(metrics_path, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        # Header
+        writer.writerow(["epoch", "train_loss", "val_loss", "train_acc", "val_acc"])
+        # One row per epoch
+        for epoch in range(EPOCHS):
+            writer.writerow([
+                epoch + 1,
+                train_losses[epoch],
+                val_losses[epoch],
+                acc[epoch],
+                val_acc[epoch]
+            ])
+    print(f"Saved metrics to {metrics_path}")

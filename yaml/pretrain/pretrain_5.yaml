@@ -8,13 +8,10 @@ spec:
   template:
     spec:
       restartPolicy: Never
-      # 1) Add tolerations for the taints you saw in `kubectl describe pod`
       tolerations:
-        # tolerate *any* nautilus.io/issue taint
       - key: "nautilus.io/issue"
         operator: "Exists"
         effect: "NoSchedule"
-        # tolerate any reservation taint
       - key: "nautilus.io/reservation"
         operator: "Exists"
         effect: "NoSchedule"

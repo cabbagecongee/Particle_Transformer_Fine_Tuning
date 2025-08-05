@@ -7,7 +7,7 @@ metadata:
   name: tn-part-ingress
 spec:
   rules:
-  - host: tn-part-.nrp-nautilus.io
+  - host: tn-part.nrp-nautilus.io
     http:
       paths:
       - backend:
@@ -19,4 +19,4 @@ spec:
         pathType: ImplementationSpecific
   tls:
   - hosts:
-    - tn-part-.nrp-nautilus.io
+    - tn-part.nrp-nautilus.io
