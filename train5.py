@@ -26,7 +26,7 @@ DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
-filelist_path = os.path.join(DATA_DIR, "filelist_local.txt")
+filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
 accelerator = Accelerator()
