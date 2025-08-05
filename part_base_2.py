@@ -16,6 +16,7 @@ import random
 from accelerate import Accelerator
 import math
 import csv
+from torch.nn.parallel import DistributedDataParallel as DDP
 
 
 BATCH_SIZE = 512
@@ -27,12 +28,9 @@ FINAL_LR = 0.01
 DECAY_INTERVAL = 20000
 WARMUP_ITERS = 100000
 
-
-
 expected_updates = EPOCHS * 1000000
 n_decays = max(1, math.ceil((expected_updates - WARMUP_ITERS)/DECAY_INTERVAL))
 gamma = FINAL_LR ** (1.0/n_decays)
-
 
 accelerator = Accelerator()
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_2.csv")
@@ -40,19 +38,15 @@ filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 
 if accelerator.is_main_process:
     os.makedirs(SAVE_DIR, exist_ok=True)
-
     os.makedirs(DATA_DIR, exist_ok=True)
 
-    # Download filelist to PVC
     if not os.path.exists(filelist_path):
         subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
 
-    # Download parquet files into PVC
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
         print("Downloading JetClass-II parquet files...")
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
-
 
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
@@ -66,9 +60,7 @@ TAU_LABELS = set(
     list(range(103, 115)) +
     list(range(143, 161))
 )
-
 QCD_LABELS = set(range(161, 188))
-
 ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
 
 random.shuffle(filepaths)
@@ -77,7 +69,6 @@ n = len(filepaths)
 train_files = filepaths[:int(0.45*n)]
 val_files = filepaths[int(0.45*n):int(0.5*n)]
 # test_files = filepaths[int(0.5*n):]
-
 
 train_dataset = IterableJetDataset(train_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
 val_dataset = IterableJetDataset(val_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
@@ -97,6 +88,13 @@ model = ParticleTransformerBackbone(
     use_hlfs = False
 )
 
+model.to(accelerator.device)
+if accelerator.num_processes > 1:
+    model = DDP(
+        model,
+        device_ids=[accelerator.local_process_index],         
+        find_unused_parameters=True,
+    )
 
 def warmup_schedule(step):
     if step < WARMUP_ITERS:
@@ -107,11 +105,12 @@ def warmup_schedule(step):
 criterion = nn.CrossEntropyLoss()
 base_optimizer = RAdam(model.parameters(), lr=1e-3, betas=(0.95, 0.999), eps=1e-5)
 
-model, base_optimizer, train_loader, val_loader = accelerator.prepare(
-    model, base_optimizer, train_loader, val_loader
+base_optimizer, train_loader, val_loader = accelerator.prepare(
+    base_optimizer, train_loader, val_loader
 )
 optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
 scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
+optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
 
 
 acc = []

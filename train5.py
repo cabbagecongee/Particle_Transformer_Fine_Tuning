@@ -49,7 +49,6 @@ if accelerator.is_main_process:
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
-# now read filepaths for splitting
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
 
