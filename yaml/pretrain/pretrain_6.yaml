@@ -8,6 +8,29 @@ spec:
   template:
     spec:
       restartPolicy: Never
+      tolerations:
+        # allow reservation-tagged nodes
+        - key: "nautilus.io/reservation"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # allow issue-tagged nodes
+        - key: "nautilus.io/issue"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # allow system-tagged nodes
+        - key: "nautilus.io/system"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # allow hardware-tagged nodes
+        - key: "nautilus.io/hardware"
+          operator: "Exists"
+          effect: "NoSchedule"
+        # allow testing-tagged nodes
+        - key: "nautilus.io/testing"
+          operator: "Exists"
+          effect: "NoSchedule"
+
+
       containers:
       - name: tn-job-pretrain-backbone-6
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
@@ -26,7 +49,7 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          accelerate launch --nproc_per_node 8 train7.py
+          accelerate launch --num_processes=4 train6.py
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
@@ -36,11 +59,11 @@ spec:
           limits:
             memory: "32Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
           requests:
             memory: "32Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
 
       initContainers:
       - name: init-clone-repo

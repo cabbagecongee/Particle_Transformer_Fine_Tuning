@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tn-nginx-conf
+  namespace: cms-ml
+data:
+  nginx.conf: |
+    user nginx;
+    worker_processes  1;
+
+    load_module "modules/ngx_http_fancyindex_module.so";
+
+    events {
+      worker_connections  1024;
+    }
+    http {
+      include       /etc/nginx/mime.types;
+      
+      server {
+          listen       80;
+          server_name  localhost;
+          root   /tnvol;
+          
+          location / {
+            fancyindex on;
+            fancyindex_localtime on;
+            fancyindex_exact_size off;
+            # fancy index theme
+            fancyindex_header "/Nginx-Fancyindex-Theme-dark/header.html";
+            fancyindex_footer "/Nginx-Fancyindex-Theme-dark/footer.html";
+            fancyindex_css_href "/Nginx-Fancyindex-Theme-dark/styles.css";
+            # Making sure folder where these files are do not show up in the listing.
+            fancyindex_ignore "Nginx-Fancyindex-Theme-dark";
+        }
+      }
+    }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tnserverdep 
+  namespace: cms-ml
+  labels:
+    run: tnserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      run: tnserver
+  template:
+    metadata: 
+      labels:
+        run: tnserver
+    spec:
+      initContainers:
+        - name: init-get-theme
+          image: busybox
+          args: ["sh", "-c", "if [ ! -d Nginx-Fancyindex-Theme-dark ]; then wget https://github.com/Naereen/Nginx-Fancyindex-Theme/archive/refs/heads/master.zip && unzip master.zip && mv Nginx-Fancyindex-Theme-master/Nginx-Fancyindex-Theme-dark ./ && rm -rf Nginx-Fancyindex-Theme-master && rm master.zip; fi"]
+          workingDir: /tnvol
+          volumeMounts:
+          - mountPath: /tnvol
+            name: tnvol
+      containers:
+      - name: tnserverdep
+        image: ondh/nginx-fancyindex
+        resources:
+           limits:
+             memory: 200Mi
+             cpu: "1"
+           requests:
+             memory: 50Mi
+             cpu: 50m
+        workingDir: /tnvol
+        volumeMounts:
+        - mountPath: /tnvol
+          name: tnvol
+        - name: tn-nginx-conf
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+          readOnly: true
+      volumes:
+      - name: tnvol
+        persistentVolumeClaim:
+          claimName: tn-pvc-many-jetclass2
+      - name: tn-nginx-conf
+        configMap:
+          name: tn-nginx-conf
+          items:
+            - key: nginx.conf
+              path: nginx.conf
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: topology.kubernetes.io/region
+                operator: In
+                values:
+                - us-west
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - suncave-17

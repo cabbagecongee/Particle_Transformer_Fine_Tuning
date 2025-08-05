@@ -29,11 +29,11 @@ SAVE_DIR = "/mnt/data/output"
 filelist_path = os.path.join(DATA_DIR, "filelist_local.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
-
 accelerator = Accelerator()
 if accelerator.is_main_process:
     os.makedirs(DATA_DIR, exist_ok=True)
-    # always (re)download filelist.txt if missing
+    os.makedirs(SAVE_DIR, exist_ok=True)
+
     if not os.path.exists(filelist_path):
         subprocess.run([
             "wget",
@@ -41,30 +41,15 @@ if accelerator.is_main_process:
             "-O",
             filelist_path
         ], check=True)
-
-    # read all URLs
-    with open(filelist_path) as f:
-        filepaths = [line.strip() for line in f]
-
-    # find which local files are missing or zero-length
-    missing = []
-    for url in filepaths:
-        fname = os.path.join(DATA_DIR, os.path.basename(url))
-        if not os.path.exists(fname) or os.path.getsize(fname) == 0:
-            missing.append(url)
-
-    # download only the missing ones
-    if missing:
-        print(f"Downloading {len(missing)} missing JetClass-II files…")
-        with open("/tmp/missing.txt", "w") as m:
-            m.write("\n".join(missing))
-        subprocess.run(["wget", "-c", "-i", "/tmp/missing.txt", "-P", DATA_DIR], check=True)
-
+    
+    if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
+        print("Downloading JetClass-II parquet files...")
+        subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
 # now read filepaths for splitting
-with open(filelist_path) as f:
-    filepaths = [line.strip() for line in f]
+with open(filelist_path, "r") as f:
+    filepaths = [line.strip() for line in f.readlines()]
 
 random.shuffle(filepaths)
 n = len(filepaths)
