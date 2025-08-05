@@ -1,5 +1,5 @@
-#change model to 4 layers
-#keep training split 45%
+#changes: change training split to (10%), validation(5%), test (70%)
+# model 8 layers
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
 
@@ -29,7 +29,7 @@ SAVE_DIR = "/mnt/data/output"
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_7.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_8.csv")
 
 accelerator = Accelerator()
 if accelerator.is_main_process:
@@ -49,32 +49,26 @@ if accelerator.is_main_process:
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
-# now read filepaths for splitting
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
 
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.45*n)]
-val_files = filepaths[int(0.45*n):int(0.5*n)]
-test_files = filepaths[int(0.5*n):]
+train_files = filepaths[:int(0.1*n)]
+val_files = filepaths[int(0.1*n):int(0.15*n)]
 
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
-test_dataset = IterableJetDataset(test_files)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
-test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, num_workers=4)
 
 length_train = len(train_files) * 100000
 
-
 model = ParticleTransformerBackbone(
     input_dim=19,         
-    num_classes=188,
-    num_layers=4,      
+    num_classes=188,      
     use_hlfs = False
   )
 model.to(accelerator.device)
@@ -90,8 +84,8 @@ def warmup_schedule(step, warmup_steps=1000):
 
 criterion = nn.CrossEntropyLoss()
 
-train_loader, val_loader, test_loader = accelerator.prepare(
-    train_loader, val_loader, test_loader
+train_loader, val_loader= accelerator.prepare(
+    train_loader, val_loader
 )
 
 base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
@@ -168,7 +162,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_7_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_8_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -177,7 +171,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"model_7_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_8_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -204,7 +198,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "model_7_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_8_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -217,7 +211,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "model_7_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_8_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
