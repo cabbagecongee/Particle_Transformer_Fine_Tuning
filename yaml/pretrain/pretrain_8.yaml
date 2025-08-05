@@ -43,11 +43,11 @@ spec:
             mountPath: /dev/shm
         resources:
           limits:
-            memory: "64Gi"
+            memory: "32Gi"
             cpu: "1"
             nvidia.com/gpu: "4"
           requests:
-            memory: "64Gi"
+            memory: "32Gi"
             cpu: "1"
             nvidia.com/gpu: "4"
     

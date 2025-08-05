@@ -50,7 +50,13 @@ accelerator.wait_for_everyone()
 
 # now read filepaths for splitting
 with open(filelist_path, "r") as f:
-    filepaths = [line.strip() for line in f.readlines()]
+    urls = [line.strip() for line in f.readlines()]
+
+filepaths = []
+for url in urls:
+    filename = url.split("/")[-1]
+    local_path = os.path.join(DATA_DIR, "data", filename)
+    filepaths.append(local_path)
 
 random.shuffle(filepaths)
 n = len(filepaths)
