@@ -18,7 +18,9 @@ import subprocess
 import random
 from accelerate import Accelerator
 import csv
-from torch.distributed import DistributedDataParallel as DDP
+from torch.nn.parallel import DistributedDataParallel as DDP
+
+
 BATCH_SIZE = 512
 LR = 1e-3
 EPOCHS = 50
