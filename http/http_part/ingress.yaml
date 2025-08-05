@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  namespace: cms-ml
+  annotations:
+    kubernetes.io/ingress.class: haproxy
+  name: tn-part-ingress
+spec:
+  rules:
+  - host: tn-part-.nrp-nautilus.io
+    http:
+      paths:
+      - backend:
+          service:
+            name: tn-part-expose
+            port:
+              number: 80
+        path: /
+        pathType: ImplementationSpecific
+  tls:
+  - hosts:
+    - tn-part-.nrp-nautilus.io

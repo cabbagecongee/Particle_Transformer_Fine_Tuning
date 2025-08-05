@@ -36,21 +36,24 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          accelerate launch --num_processes 8 train5.py
+          accelerate launch --num_processes=4 train5.py
         volumeMounts:
-        - name: git-repo
-          mountPath: /mnt/repo
-        - name: tn-pvc-many-jetclass2
-          mountPath: /mnt/data
+          - name: git-repo
+            mountPath: /mnt/repo
+          - name: tn-pvc-many-jetclass2
+            mountPath: /mnt/data
+          - name: dshm
+            mountPath: /dev/shm
         resources:
           limits:
-            memory: "16Gi"
+            memory: "64Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
           requests:
-            memory: "16Gi"
+            memory: "64Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
+    
 
       initContainers:
       - name: init-clone-repo
@@ -60,9 +63,6 @@ spec:
         - --single-branch
         - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
         - /mnt/repo/Particle_Transformer_Fine_Tunning
-        volumeMounts:
-        - name: git-repo
-          mountPath: /mnt/repo
         resources:
           limits:
             memory: "900Mi"
@@ -70,6 +70,9 @@ spec:
           requests:
             memory: "900Mi"
             cpu: "1"
+        volumeMounts: 
+        - name: git-repo
+          mountPath: /mnt/repo
 
       volumes:
       - name: git-repo
@@ -77,49 +80,27 @@ spec:
       - name: tn-pvc-many-jetclass2
         persistentVolumeClaim:
           claimName: tn-pvc-many-jetclass2
+      - name: dshm
+        emptyDir: 
+          medium: Memory
+          sizeLimit: 1Gi
 
-      # affinity:
-      #   nodeAffinity:
-      #     preferredDuringSchedulingIgnoredDuringExecution:
-      #       nodeSelectorTerms:
-      #       - matchExpressions:
-      #         - key: kubernetes.io/hostname
-      #           operator: NotIn
-      #           values:
-      #             - gpn-fiona-mizzou-2.rnet.missouri.edu
-      #             - rci-nrp-gpu-05.sdsu.edu
-      #             - node-2-2.sdsc.optiputer.net
-      #         - key: nvidia.com/gpu.product
-      #           operator: In
-      #           values:
-      #             - Tesla-V100-SXM2-32GB	
-      #             - NVIDIA-A40	
-      #             - NVIDIA-L40
-      #             - NVIDIA-RTX-A6000	
-      #             - Quadro-RTX-8000	
       affinity:
         nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            # 1) preference on hostname exclusion
-          - weight:  50
-            preference:
-              matchExpressions:
-                - key: kubernetes.io/hostname
-                  operator: NotIn
-                  values:
-                    - gpn-fiona-mizzou-2.rnet.missouri.edu
-                    - rci-nrp-gpu-05.sdsu.edu
-                    - node-2-2.sdsc.optiputer.net
-
-            # 2) preference on GPU type
-          - weight: 100
-            preference:
-              matchExpressions:
-                - key: nvidia.com/gpu.product
-                  operator: In
-                  values:
-                    - Tesla-V100-SXM2-32GB
-                    - NVIDIA-A40
-                    - NVIDIA-L40
-                    - NVIDIA-RTX-A6000
-                    - Quadro-RTX-8000
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                  - gpn-fiona-mizzou-2.rnet.missouri.edu
+                  - rci-nrp-gpu-05.sdsu.edu
+                  - node-2-2.sdsc.optiputer.net
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - Tesla-V100-SXM2-32GB	
+                  - NVIDIA-A40	
+                  - NVIDIA-L40
+                  - NVIDIA-RTX-A6000	
+                  - Quadro-RTX-8000	

@@ -1,0 +1,16 @@
+#letting the pod expose itself on port 80
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: cms-ml
+  labels:
+    run: tn-part-server
+  name: tn-part-expose
+spec:
+  ports:
+  - port: 80
+    protocol: TCP
+    targetPort: 80
+  selector:
+    run: tn-part-server
+  type: ClusterIP

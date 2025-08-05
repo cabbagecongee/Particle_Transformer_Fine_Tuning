@@ -29,7 +29,7 @@ SAVE_DIR = "/mnt/data/output"
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
-accelerator = Accelerator()
+accelerator = Accelerator(find_unused_parameters=True)
 if accelerator.is_main_process:
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
