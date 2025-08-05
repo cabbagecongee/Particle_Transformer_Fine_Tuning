@@ -33,7 +33,7 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          accelerate launch --num_processes=8 train3.py
+          accelerate launch --num_processes=4 train3.py
         volumeMounts:
           - name: git-repo
             mountPath: /mnt/repo
@@ -45,11 +45,11 @@ spec:
           limits:
             memory: "64Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
           requests:
             memory: "64Gi"
             cpu: "1"
-            nvidia.com/gpu: "8"
+            nvidia.com/gpu: "4"
     
 
       initContainers:

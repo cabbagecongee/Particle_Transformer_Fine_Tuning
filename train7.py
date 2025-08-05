@@ -18,6 +18,8 @@ import subprocess
 import random
 from accelerate import Accelerator
 import csv
+from torch.nn.parallel import DistributedDataParallel as DDP
+
 
 BATCH_SIZE = 512
 LR = 1e-3
@@ -26,26 +28,28 @@ DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
-filelist_path = os.path.join(DATA_DIR, "filelist_local.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_7.csv")
-
+filelist_path = os.path.join(DATA_DIR, "filelist.txt")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
 accelerator = Accelerator()
 if accelerator.is_main_process:
+    os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
 
-    os.makedirs(DATA_DIR, exist_ok=True)
-
-    # Download filelist to PVC
     if not os.path.exists(filelist_path):
-        subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
-
-    # Download parquet files into PVC
+        subprocess.run([
+            "wget",
+            "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt",
+            "-O",
+            filelist_path
+        ], check=True)
+    
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
         print("Downloading JetClass-II parquet files...")
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 accelerator.wait_for_everyone()
 
+# now read filepaths for splitting
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
 
@@ -69,17 +73,25 @@ length_train = len(train_files) * 100000
 
 model = ParticleTransformerBackbone(
     input_dim=19,         
-    num_classes=188,      
+    num_classes=188,
+    num_layers=4,      
     use_hlfs = False
   )
-
+model.to(accelerator.device)
+if accelerator.num_processes > 1:
+    model = DDP(
+        model,
+        device_ids=[accelerator.local_process_index],         
+        find_unused_parameters=True,
+    )
+    
 def warmup_schedule(step, warmup_steps=1000):
     return min(1.0, step / warmup_steps)
 
 criterion = nn.CrossEntropyLoss()
 
-model, train_loader, val_loader, test_loader = accelerator.prepare(
-    model, train_loader, val_loader, test_loader
+train_loader, val_loader, test_loader = accelerator.prepare(
+    train_loader, val_loader, test_loader
 )
 
 base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
@@ -156,7 +168,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_5_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -165,7 +177,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"model_5_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -192,7 +204,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "model_7_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_5_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -205,9 +217,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(os.path.join(SAVE_DIR, "model_7_loss_curve.png"))
-
-    plot_path = os.path.join(SAVE_DIR, "model_7_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "model_5_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
