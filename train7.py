@@ -77,7 +77,7 @@ model = ParticleTransformerBackbone(
     num_layers=4,      
     use_hlfs = False
   )
-model.to(accelerator.device)
+# model.to(accelerator.device)
 if accelerator.num_processes > 1:
     model = DDP(
         model,
@@ -90,8 +90,8 @@ def warmup_schedule(step, warmup_steps=1000):
 
 criterion = nn.CrossEntropyLoss()
 
-train_loader, val_loader, test_loader = accelerator.prepare(
-    train_loader, val_loader, test_loader
+train_loader, val_loader, test_loader, model = accelerator.prepare(
+    train_loader, val_loader, test_loader, model
 )
 
 base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
