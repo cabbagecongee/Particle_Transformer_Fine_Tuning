@@ -66,8 +66,8 @@ val_files = filepaths[int(0.1*n):int(0.15*n)]
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0)
 
 length_train = len(train_files) * 100000
 

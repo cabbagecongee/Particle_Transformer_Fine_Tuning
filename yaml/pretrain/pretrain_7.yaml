@@ -81,7 +81,7 @@ spec:
       - name: dshm
         emptyDir: 
           medium: Memory
-          sizeLimit: 1Gi
+          sizeLimit: 16Gi
 
       affinity:
         nodeAffinity:
