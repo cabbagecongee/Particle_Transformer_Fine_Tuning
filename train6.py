@@ -19,6 +19,7 @@ from accelerate import Accelerator
 import csv
 import subprocess
 from torch.nn.parallel import DistributedDataParallel as DDP
+from accelerate.utils import DistributedDataParallelKwargs
 
 BATCH_SIZE = 512
 LR = 1e-3
@@ -30,7 +31,10 @@ SAVE_DIR = "/mnt/data/output"
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_6.csv")
 
-accelerator = Accelerator()
+
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+
 if accelerator.is_main_process:
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(SAVE_DIR, exist_ok=True)
