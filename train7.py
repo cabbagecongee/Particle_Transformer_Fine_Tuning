@@ -78,12 +78,6 @@ model = ParticleTransformerBackbone(
     use_hlfs = False
   )
 # model.to(accelerator.device)
-if accelerator.num_processes > 1:
-    model = DDP(
-        model,
-        device_ids=[accelerator.local_process_index],         
-        find_unused_parameters=True,
-    )
     
 def warmup_schedule(step, warmup_steps=1000):
     return min(1.0, step / warmup_steps)
