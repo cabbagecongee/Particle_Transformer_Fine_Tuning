@@ -26,7 +26,7 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          accelerate launch part_base_3.py
+          accelerate launch --num_processes=4 part_base_3.py
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
@@ -36,11 +36,11 @@ spec:
           limits:
             memory: "32Gi"
             cpu: "1"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "4"
           requests:
             memory: "32Gi"
             cpu: "1"
-            nvidia.com/gpu: "1"
+            nvidia.com/gpu: "4"
 
       initContainers:
       - name: init-clone-repo
