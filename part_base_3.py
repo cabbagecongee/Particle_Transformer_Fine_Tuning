@@ -16,6 +16,7 @@ import random
 from accelerate import Accelerator
 import math
 import csv
+from accelerate.utils import DistributedDataParallelKwargs
 
 
 BATCH_SIZE = 512
@@ -34,20 +35,18 @@ n_decays = max(1, math.ceil((expected_updates - WARMUP_ITERS)/DECAY_INTERVAL))
 gamma = FINAL_LR ** (1.0/n_decays)
 
 
-accelerator = Accelerator()
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_3.csv")
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 
 if accelerator.is_main_process:
     os.makedirs(SAVE_DIR, exist_ok=True)
-
     os.makedirs(DATA_DIR, exist_ok=True)
-
-    # Download filelist to PVC
     if not os.path.exists(filelist_path):
         subprocess.run(["wget", "https://huggingface.co/datasets/jet-universe/jetclass2/resolve/main/filelist.txt", "-O", filelist_path], check=True)
 
-    # Download parquet files into PVC
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
         print("Downloading JetClass-II parquet files...")
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
@@ -112,6 +111,9 @@ model, base_optimizer, train_loader, val_loader = accelerator.prepare(
 )
 optimizer = Lookahead(base_optimizer, k=6, alpha=0.5)
 scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
+
+optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
+
 
 acc = []
 val_acc = []
