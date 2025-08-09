@@ -26,6 +26,7 @@ spec:
           echo "[INFO] Checking GPU availability..." && \
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
+          export TORCH_DISTRIBUTED_DEBUG=DETAIL && \
           accelerate launch --num_processes=4 part_base_3.py
         volumeMounts:
         - name: git-repo

@@ -117,9 +117,9 @@ class IterableJetDataset(IterableDataset):
       )
     for i in range(len(labels)):
       yield(
-          torch.tensor(x_particles[i], dtype=torch.float),
-          torch.tensor(x_jets[i], dtype=torch.float),
-          torch.tensor(labels[i], dtype=torch.long)
+          torch.tensor(x_particles[i], dtype=torch.float).clone(),
+          torch.tensor(x_jets[i], dtype=torch.float).clone(),
+          torch.tensor(labels[i], dtype=torch.long).clone()
       )
   def __iter__(self):
     if self.shuffle_files:
