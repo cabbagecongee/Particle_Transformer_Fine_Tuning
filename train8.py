@@ -137,7 +137,7 @@ for epoch in range(EPOCHS):
   val_loss_acum = 0.0
   val_correct = 0
   val_total = 0
-  with torch.inference_mode():
+  with torch.no_grad():
       for x_particles, x_jets, labels in val_loader:
           outputs = model(x_particles.transpose(1, 2))
           loss = criterion(outputs, labels)
