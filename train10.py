@@ -72,6 +72,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0)
 
 length_train = len(train_files) * 100000
+num_iterations = length_train // BATCH_SIZE 
 
 
 model = ParticleTransformerBackbone(
@@ -108,7 +109,7 @@ best_val_acc_epoch = -1
 for epoch in range(EPOCHS):
   model.train()
   total, correct, total_loss = 0, 0, 0
-  for x_particles, x_jets, labels in tqdm(train_loader, total=length_train, desc=f"Epoch {epoch+1}/{EPOCHS}"):
+  for x_particles, x_jets, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
     optimizer.zero_grad()
     outputs = model(x_particles.transpose(1, 2))
     loss = criterion(outputs, labels)
