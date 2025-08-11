@@ -71,7 +71,7 @@ train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0)
 
 length_train = len(train_files) * 100000
-
+num_iterations = length_train // BATCH_SIZE 
 
 model = ParticleTransformerBackbone(
     input_dim=19,         
@@ -106,7 +106,7 @@ best_val_acc_epoch = -1
 for epoch in range(EPOCHS):
   model.train()
   total, correct, total_loss = 0, 0, 0
-  for x_particles, x_jets, labels in tqdm(train_loader, total=length_train, desc=f"Epoch {epoch+1}/{EPOCHS}"):
+  for x_particles, x_jets, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
     optimizer.zero_grad()
     outputs = model(x_particles.transpose(1, 2))
     loss = criterion(outputs, labels)
@@ -156,6 +156,7 @@ for epoch in range(EPOCHS):
         print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
 
     if accelerator.is_main_process:
+        saved = False
         # save best‐loss checkpoint
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
@@ -164,9 +165,9 @@ for epoch in range(EPOCHS):
                 accelerator.unwrap_model(model).state_dict(),
                 os.path.join(SAVE_DIR, f"model_5_best_loss_epoch{epoch+1}.pt")
             )
-
+            saved = True
         # save best‐accuracy checkpoint
-        if val_accuracy > best_val_acc:
+        if val_accuracy > best_val_acc and not saved:
             best_val_acc = val_accuracy
             best_val_acc_epoch = epoch + 1
             accelerator.save(
