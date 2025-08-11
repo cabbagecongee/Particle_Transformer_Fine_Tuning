@@ -19,6 +19,8 @@ import random
 from accelerate import Accelerator
 import csv
 from accelerate.utils import DistributedDataParallelKwargs
+from accelerate.utils import InitProcessGroupKwargs
+from datetime import timedelta
 
 
 BATCH_SIZE = 512
@@ -31,11 +33,10 @@ SAVE_DIR = "/mnt/data/output"
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_model_5.csv")
 
-# Prepare kwargs for DistributedDataParallel to handle unused parameters
-ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
 
-# Initialize the accelerator with the DDP kwargs handler
-accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
+kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+accelerator = Accelerator(kwargs_handlers=[ddp_kwargs, kwargs])
 
 if accelerator.is_main_process:
     os.makedirs(DATA_DIR, exist_ok=True)
@@ -52,7 +53,7 @@ if accelerator.is_main_process:
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
         print("Downloading JetClass-II parquet files...")
         subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
-accelerator.wait_for_everyone()
+# accelerator.wait_for_everyone()
 
 with open(filelist_path, "r") as f:
     filepaths = [line.strip() for line in f.readlines()]
