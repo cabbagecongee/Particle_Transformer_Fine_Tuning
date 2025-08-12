@@ -121,8 +121,37 @@ class IterableJetDataset(IterableDataset):
           torch.tensor(x_jets[i], dtype=torch.float).clone(),
           torch.tensor(labels[i], dtype=torch.long).clone()
       )
+  # def __iter__(self):
+  #   if self.shuffle_files:
+  #     random.shuffle(self.filepaths)
+  #   for filepath in self.filepaths:
+  #     yield from self.parse_files(filepath)
+
   def __iter__(self):
+    # Get worker information
+    worker_info = torch.utils.data.get_worker_info()
+
+    # Shuffle the master list of files at the start of each epoch
     if self.shuffle_files:
-      random.shuffle(self.filepaths)
-    for filepath in self.filepaths:
-      yield from self.parse_files(filepath)
+        random.shuffle(self.filepaths)
+
+    # Determine which files this worker should process
+    if worker_info is None:
+        # Case 1: Single-process loading (num_workers=0)
+        # The main process handles all files.
+        file_list = self.filepaths
+    else:
+        # Case 2: Multi-process loading
+        # Split the workload. Each worker gets a unique slice of the file list.
+        worker_id = worker_info.id
+        num_workers = worker_info.num_workers
+        file_list = self.filepaths[worker_id::num_workers]
+
+    # Process the assigned files
+    for filepath in file_list:
+        try:
+            yield from self.parse_files(filepath)
+        except Exception as e:
+            # It's good practice to handle potential file reading errors
+            print(f"ERROR: Worker {worker_info.id if worker_info else 0} failed to process {filepath}. Reason: {e}. Skipping file.")
+            continue
