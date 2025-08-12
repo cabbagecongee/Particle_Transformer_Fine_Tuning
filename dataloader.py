@@ -128,11 +128,9 @@ class IterableJetDataset(IterableDataset):
   #     yield from self.parse_files(filepath)
 
   def __iter__(self):
-    # Get worker information
     worker_info = torch.utils.data.get_worker_info()
 
-    # Shuffle the master list of files at the start of each epoch
-    if self.shuffle_files:
+    if self.shuffle_files: #shuffles for each epoch
         random.shuffle(self.filepaths)
 
     # Determine which files this worker should process
@@ -147,11 +145,9 @@ class IterableJetDataset(IterableDataset):
         num_workers = worker_info.num_workers
         file_list = self.filepaths[worker_id::num_workers]
 
-    # Process the assigned files
     for filepath in file_list:
         try:
             yield from self.parse_files(filepath)
         except Exception as e:
-            # It's good practice to handle potential file reading errors
             print(f"ERROR: Worker {worker_info.id if worker_info else 0} failed to process {filepath}. Reason: {e}. Skipping file.")
             continue
