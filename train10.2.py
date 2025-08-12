@@ -1,5 +1,6 @@
 #changes: change training split to (5%), validation(3%)
 #model size 8 layers
+#with AdamW instead of RAdam with Lookahead
 # train the backbone
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
@@ -11,8 +12,7 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 from optimizer import Lookahead
-from torch.optim import RAdam
-from torch.optim.lr_scheduler import LambdaLR
+from torch.optim import AdamW
 from model import ParticleTransformerBackbone
 from dataloader import IterableJetDataset
 import subprocess
@@ -86,14 +86,11 @@ def warmup_schedule(step, warmup_steps=1000):
 
 criterion = nn.CrossEntropyLoss()
 
-train_loader, val_loader, model = accelerator.prepare(
-    train_loader, val_loader, model
-)
+optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999))
 
-base_opt = RAdam(model.parameters(), lr=LR, betas=(0.95,0.999), eps=1e-5)
-optimizer = Lookahead(base_opt, k=6, alpha=0.5)
-scheduler = LambdaLR(optimizer, lr_lambda=warmup_schedule)
-optimizer, scheduler = accelerator.prepare(optimizer, scheduler)
+train_loader, val_loader, optimizer, model = accelerator.prepare(
+    train_loader, val_loader, optimizer, model
+)
 
 
 acc = []
@@ -114,7 +111,6 @@ for epoch in range(EPOCHS):
     loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
-    scheduler.step()
 
     correct += (outputs.argmax(1) == labels).sum().item()
     total   += labels.size(0)
