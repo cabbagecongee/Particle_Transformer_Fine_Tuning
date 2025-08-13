@@ -114,17 +114,21 @@ for epoch in range(EPOCHS):
 
     correct += (outputs.argmax(1) == labels).sum().item()
     total   += labels.size(0)
-    total_loss += loss.item() 
+    total_loss += loss.item() * labels.size(0)
 
   corr_all = accelerator.gather(torch.tensor(correct, device=accelerator.device)).sum().item()
   tot_all  = accelerator.gather(torch.tensor(total,   device=accelerator.device)).sum().item()
+  train_loss_all = accelerator.gather(torch.tensor(total_loss, device=accelerator.device)).sum().item()
+
   train_acc = corr_all / tot_all
+  train_loss = train_loss_all/tot_all
   
   acc.append(train_acc)
-  train_losses.append(total_loss/total)
+  train_losses.append(train_loss)
 
   if accelerator.is_main_process:
     print(f"Epoch {epoch+1}: Train Acc = {train_acc:.4f}")
+    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}")
 
 
   model.eval()
