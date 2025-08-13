@@ -34,7 +34,7 @@ spec:
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
           export TORCH_DISTRIBUTED_DEBUG=DETAIL && \
-          accelerate launch --num_processes=4 train10.py
+          accelerate launch --num_processes=4 train10.2.py
         volumeMounts:
           - name: git-repo
             mountPath: /mnt/repo
