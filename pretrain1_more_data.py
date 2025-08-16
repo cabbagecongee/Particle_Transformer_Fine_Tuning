@@ -63,8 +63,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.1*n)]
-val_files = filepaths[int(0.1*n):int(0.15*n)]
+train_files = filepaths[:int(0.4*n)]
+val_files = filepaths[int(0.4*n):int(0.55*n)]
 
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
