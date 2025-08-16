@@ -1,6 +1,7 @@
 #changes: change training split to (45%), validation(5%)
 #model size 8 layers
 #with AdamW instead of RAdam with Lookahead
+#added weight decay and LR scheduler
 #epochs 100
 # base training
 
@@ -49,7 +50,7 @@ ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_1.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_1_dcy_schr.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
@@ -100,10 +101,11 @@ model = ParticleTransformerBackbone(
   )
 
 criterion = nn.CrossEntropyLoss()
-optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999))
+optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999), weight_decay=1e-2)
+scheduler = OneCycleLR(optimizer, max_lr=LR, total_steps=total_steps)
 
-train_loader, val_loader, optimizer, model = accelerator.prepare(
-    train_loader, val_loader, optimizer, model
+train_loader, val_loader, optimizer, model, scheduler = accelerator.prepare(
+    train_loader, val_loader, optimizer, model, scheduler
 )
 
 
@@ -126,6 +128,7 @@ for epoch in range(EPOCHS):
     loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
+    scheduler.step()
 
     correct += (outputs.argmax(1) == labels).sum().item()
     total   += labels.size(0)
@@ -179,7 +182,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base_1_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_1_dcy_schr_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -188,7 +191,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base_1_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_1_dcy_schr_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -215,7 +218,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "base_1_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_1_dcy_schr_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -228,7 +231,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "base_1_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_1_dcy_schr_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
