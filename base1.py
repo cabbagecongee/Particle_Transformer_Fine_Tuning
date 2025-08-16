@@ -49,7 +49,7 @@ ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain_1.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_base_1.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
@@ -179,7 +179,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_1_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -188,7 +188,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"base_1_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -215,7 +215,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_1_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -228,7 +228,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "base_1_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:

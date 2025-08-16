@@ -38,7 +38,7 @@ spec:
         volumeMounts:
           - name: git-repo
             mountPath: /mnt/repo
-          - name: tn-pvc-many-jetclass2
+          - name: tn-pvc-base-jetclass2
             mountPath: /mnt/data
           - name: dshm
             mountPath: /dev/shm
@@ -75,9 +75,9 @@ spec:
       volumes:
       - name: git-repo
         emptyDir: {}
-      - name: tn-pvc-many-jetclass2
+      - name: tn-pvc-base-jetclass2
         persistentVolumeClaim:
-          claimName: tn-pvc-many-jetclass2
+          claimName: tn-pvc-base-jetclass2
       - name: dshm
         emptyDir: 
           medium: Memory
