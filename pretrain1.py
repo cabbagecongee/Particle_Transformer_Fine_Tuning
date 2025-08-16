@@ -1,6 +1,7 @@
 #changes: change training split to (10%), validation(5%)
 #model size 8 layers
 #with AdamW instead of RAdam with Lookahead
+#epochs 100
 # train the backbone
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
@@ -26,7 +27,7 @@ from datetime import timedelta
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 50
+EPOCHS = 100
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
