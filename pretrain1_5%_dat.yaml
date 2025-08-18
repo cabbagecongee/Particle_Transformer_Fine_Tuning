@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-job-pretrain-backbone-1-0.05-dat
+  name: tn-job-pretrain-backbone-1-5dat
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -16,7 +16,7 @@ spec:
         operator: "Exists"
         effect: "NoSchedule"
       containers:
-      - name: tn-job-pretrain-backbone-1-0.05-dat
+      - name: tn-job-pretrain-backbone-1-5dat
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         command:
         - sh

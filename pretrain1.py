@@ -1,7 +1,8 @@
 #changes: change training split to (10%), validation(5%)
-#model size 8 layers
+#model size4 layers
 #with AdamW instead of RAdam with Lookahead
-#epochs 100
+#epochs 50
+#10% dropout
 # train the backbone
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
@@ -27,13 +28,13 @@ from datetime import timedelta
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 100
+EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain_1.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain_1b.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
@@ -80,6 +81,8 @@ model = ParticleTransformerBackbone(
     input_dim=19,         
     num_classes=188,      
     use_hlfs = False,
+    num_layers=4,
+    block_params={"dropout": 0.1}
   )
 
 criterion = nn.CrossEntropyLoss()
@@ -162,7 +165,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain_1b_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -171,7 +174,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain_1b_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -198,7 +201,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain_1b_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -211,7 +214,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain_1b_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:

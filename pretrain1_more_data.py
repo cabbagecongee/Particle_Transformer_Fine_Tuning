@@ -27,7 +27,7 @@ from datetime import timedelta
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 100
+EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
