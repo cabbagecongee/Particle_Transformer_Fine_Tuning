@@ -49,7 +49,6 @@ def read_file(
       return x
 
   table = ak.Array(ak.from_parquet(filepath))
-  num_events = len(table)
 
   p4 = vector.zip({
       'px': table['part_px'],
@@ -57,14 +56,6 @@ def read_file(
       'pz': table['part_pz'],
       'E': table['part_energy']
   })
-
-  # Shape: (num_events, 2, max_num_particles, 4)
-  v_particles = np.stack([
-      ak.to_numpy(pad(p4.px, max_num_particles)),
-      ak.to_numpy(pad(p4.py, max_num_particles)),
-      ak.to_numpy(pad(p4.pz, max_num_particles)),
-      ak.to_numpy(pad(p4.E, max_num_particles))
-  ], axis=-1)
 
   table["part_pt"] = p4.pt
   table["part_eta"] = p4.eta
@@ -78,17 +69,12 @@ def read_file(
     y = y[mask]
     y = np.array([1 if label in tau_labels else 0 for label in y])
 
-  x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_particles)) for n in particle_features], axis=-1)
-  # x_particles = np.transpose(x_particles, (0, 2, 1))
-
-  # Mask is 1 if pt > 0 (real particle), 0 if padding
-  # Shape: (num_events, max_num_particles)
-  mask = (v_particles[:, :, 0]**2 + v_particles[:, :, 1]**2 > 1e-9).astype('float32')
-
+  x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_particles)) for n in particle_features], axis=1)
+  x_particles = np.transpose(x_particles, (0, 2, 1))
 
   x_jets = np.stack([ak.to_numpy(table[n]) for n in jet_features], axis=1)
 
-  return x_particles, x_jets, v_particles, mask, y
+  return x_particles, x_jets, y
 
 
 class JetDataset(torch.utils.data.Dataset):
@@ -120,7 +106,7 @@ class IterableJetDataset(IterableDataset):
 
 
   def parse_files(self, filepath):
-    x_particles, x_jets, v_particles, mask, labels = read_file(
+    x_particles, x_jets, labels = read_file(
       filepath=filepath,
       particle_features=constituent_keys,
       jet_features=hlf_keys,
@@ -129,14 +115,11 @@ class IterableJetDataset(IterableDataset):
       allowed_labels=self.allowed_labels, 
       tau_labels=self.tau_labels
       )
-    
     for i in range(len(labels)):
       yield(
           torch.tensor(x_particles[i], dtype=torch.float).clone(),
           torch.tensor(x_jets[i], dtype=torch.float).clone(),
-          torch.tensor(v_particles[i], dtype=torch.float).clone(),
-           torch.tensor(mask[i], dtype=torch.float),
-          torch.tensor(labels[i], dtype=torch.long).clone(),
+          torch.tensor(labels[i], dtype=torch.long).clone()
       )
   # def __iter__(self):
   #   if self.shuffle_files:

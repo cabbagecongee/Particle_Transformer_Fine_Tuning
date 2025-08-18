@@ -1,5 +1,5 @@
-#changes: change training split to (10%), validation(5%)
-#model size 8 layers
+#changes: change training split to (1%), validation(1%)
+#model size 4 layers
 #with AdamW instead of RAdam with Lookahead
 #epochs 100
 # train the backbone
@@ -53,18 +53,18 @@ if accelerator.is_main_process:
         ], check=True)
     
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
-        print("Downloading JetClass-II parquet files...")
-        subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
+        print("Data appears empty please download data to PVC.")
+        # subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 # accelerator.wait_for_everyone()
 
 with open(filelist_path, "r") as f:
-    filepaths = [line.strip() for line in f.readlines()]
+    filepaths = [os.path.join(DATA_DIR, os.path.basename(line.strip())) for line in f.readlines()]
 
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.01*n)]
+val_files = filepaths[int(0.01*n):int(0.02*n)]
 
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
@@ -80,6 +80,7 @@ model = ParticleTransformerBackbone(
     input_dim=19,         
     num_classes=188,      
     use_hlfs = False,
+    num_layers=4
   )
 
 criterion = nn.CrossEntropyLoss()
@@ -103,9 +104,13 @@ for epoch in range(EPOCHS):
   model.train()
   total, correct, total_loss = 0, 0, 0
   train_loss_acum = 0.0
-  for x_particles, x_jets, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
+  for x_particles, x_jets, v_particles, mask, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
     optimizer.zero_grad()
-    outputs = model(x_particles.transpose(1, 2))
+    outputs = model(
+        x=x_particles.transpose(1, 2),
+        v=v_particles.transpose(1, 2),
+        mask=mask.unsqueeze(1)
+    )
     loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
@@ -134,14 +139,18 @@ for epoch in range(EPOCHS):
   val_correct = 0
   val_total = 0
   with torch.no_grad():
-      for x_particles, x_jets, labels in val_loader:
-          outputs = model(x_particles.transpose(1, 2))
-          loss = criterion(outputs, labels)
-          val_loss_acum += loss.item() * labels.size(0)
+      for x_particles, x_jets, v_particles, mask, labels in val_loader:
+        outputs = model(
+                x=x_particles.transpose(1, 2),
+                v=v_particles.transpose(1, 2),
+                mask=mask.unsqueeze(1)
+            )
+        loss = criterion(outputs, labels)
+        val_loss_acum += loss.item() * labels.size(0)
 
-          _, pred = outputs.max(1)
-          val_correct += (pred == labels).sum().item()
-          val_total += labels.size(0)
+        _, pred = outputs.max(1)
+        val_correct += (pred == labels).sum().item()
+        val_total += labels.size(0)
 
   val_loss_all    = accelerator.gather(torch.tensor(val_loss_acum,   device=accelerator.device)).sum().item()
   val_total_all   = accelerator.gather(torch.tensor(val_total,  device=accelerator.device)).sum().item()

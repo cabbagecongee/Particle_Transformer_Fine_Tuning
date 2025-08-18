@@ -53,12 +53,12 @@ if accelerator.is_main_process:
         ], check=True)
     
     if len(os.listdir(DATA_DIR)) <= 1:  # only filelist.txt exists
-        print("Downloading JetClass-II parquet files...")
-        subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
+        print("Data directory appears empty. Please ensure data is pre-populated on the PVC.")
+        # subprocess.run(["wget", "-c", "-i", filelist_path, "-P", DATA_DIR], check=True)
 # accelerator.wait_for_everyone()
 
 with open(filelist_path, "r") as f:
-    filepaths = [line.strip() for line in f.readlines()]
+    filepaths = [os.path.join(DATA_DIR, os.path.basename(line.strip())) for line in f.readlines()]
 
 random.shuffle(filepaths)
 n = len(filepaths)
