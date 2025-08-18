@@ -106,9 +106,13 @@ for epoch in range(EPOCHS):
   model.train()
   total, correct, total_loss = 0, 0, 0
   train_loss_acum = 0.0
-  for x_particles, x_jets, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
+  for x_particles, x_jets, v_particles, mask, labels in tqdm(train_loader, total=num_iterations, desc=f"Epoch {epoch+1}/{EPOCHS}"):
     optimizer.zero_grad()
-    outputs = model(x_particles.transpose(1, 2))
+    outputs = model(
+        x=x_particles.transpose(1, 2),
+        v=v_particles.transpose(1, 2),
+        mask=mask.unsqueeze(1)
+    )
     loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
@@ -128,8 +132,8 @@ for epoch in range(EPOCHS):
   train_losses.append(train_loss)
 
   if accelerator.is_main_process:
-    print(f"Epoch {epoch+1}: Train Acc = {train_acc:.4f}")
     print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}")
+    print(f"Epoch {epoch+1}: Train Acc = {train_acc:.4f}")
 
 
   model.eval()
@@ -137,8 +141,12 @@ for epoch in range(EPOCHS):
   val_correct = 0
   val_total = 0
   with torch.no_grad():
-      for x_particles, x_jets, labels in val_loader:
-          outputs = model(x_particles.transpose(1, 2))
+      for x_particles, x_jets, v_particles, mask, labels in val_loader:
+          outputs = model(
+                x=x_particles.transpose(1, 2),
+                v=v_particles.transpose(1, 2),
+                mask=mask.unsqueeze(1)
+            )
           loss = criterion(outputs, labels)
           val_loss_acum += loss.item() * labels.size(0)
 
@@ -156,7 +164,7 @@ for epoch in range(EPOCHS):
   if val_total_all > 0:
     val_acc.append(val_accuracy)
     if accelerator.is_main_process:
-        print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.4f}")
+        print(f"Validation Loss: {avg_val_loss:.4f}\n Validation Accuracy: {val_accuracy:.4f}")
 
     if accelerator.is_main_process:
         # save best‐loss checkpoint
