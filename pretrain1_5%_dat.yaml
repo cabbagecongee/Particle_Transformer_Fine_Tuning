@@ -34,7 +34,7 @@ spec:
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
           export TORCH_DISTRIBUTED_DEBUG=DETAIL && \
-          accelerate launch --num_processes=4 pretrain1_5%_dat.py
+          accelerate launch --num_processes=5 pretrain1_5%_dat.py
         volumeMounts:
           - name: git-repo
             mountPath: /mnt/repo
@@ -44,11 +44,11 @@ spec:
             mountPath: /dev/shm
         resources:
           limits:
-            memory: "64Gi"
+            memory: "128Gi"
             cpu: "4"
             nvidia.com/gpu: "4"
           requests:
-            memory: "64Gi"
+            memory: "128Gi"
             cpu: "4"
             nvidia.com/gpu: "4"
     

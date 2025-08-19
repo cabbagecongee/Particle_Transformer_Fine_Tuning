@@ -1,7 +1,7 @@
 #changes: change training split to (40%), validation(15%)
 #model size 8 layers
 #with AdamW instead of RAdam with Lookahead
-#epochs 100
+#epochs 50
 # train the backbone
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536

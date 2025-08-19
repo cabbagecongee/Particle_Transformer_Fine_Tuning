@@ -1,7 +1,7 @@
 #changes: change training split to (5%), validation(2%)
 #model size 4 layers
 #with AdamW instead of RAdam with Lookahead
-#epochs 100
+#epochs 50
 # train the backbone
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
@@ -27,13 +27,13 @@ from datetime import timedelta
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 100
+EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain_1_5%_dat.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain_1_5%_datb.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=False)
@@ -69,8 +69,8 @@ val_files = filepaths[int(0.05*n):int(0.07*n)]
 train_dataset = IterableJetDataset(train_files)
 val_dataset = IterableJetDataset(val_files)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0)
 
 length_train = len(train_files) * 100000
 num_iterations = length_train // BATCH_SIZE 
@@ -171,7 +171,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_5%_dat_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain_1_5%_datb_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -180,7 +180,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"pretrain_1_5%_dat_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain_1_5%_datb_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -207,7 +207,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_5%_dat_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain_1_5%_datb_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -220,7 +220,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "pretrain_1_5%_dat_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain_1_5%_datb_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
