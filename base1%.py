@@ -28,7 +28,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 100
+EPOCHS = 50
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
@@ -74,7 +74,7 @@ if accelerator.is_main_process:
 # accelerator.wait_for_everyone()
 
 with open(filelist_path, "r") as f:
-    filepaths = [line.strip() for line in f.readlines()]
+    filepaths = [os.path.join(DATA_DIR, os.path.basename(line.strip())) for line in f.readlines()]
 
 random.shuffle(filepaths)
 n = len(filepaths)
