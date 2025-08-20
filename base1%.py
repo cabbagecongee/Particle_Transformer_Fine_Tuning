@@ -52,7 +52,7 @@ filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, "training_metrics_base1%.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
-ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=False)
 accelerator = Accelerator(kwargs_handlers=[ddp_kwargs, kwargs])
 
 
