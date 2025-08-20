@@ -46,11 +46,11 @@ spec:
           limits:
             memory: "128Gi"
             cpu: "4"
-            nvidia.com/gpu: "4"
+            nvidia.com/gpu: "5"
           requests:
             memory: "128Gi"
             cpu: "4"
-            nvidia.com/gpu: "4"
+            nvidia.com/gpu: "5"
     
 
       initContainers:

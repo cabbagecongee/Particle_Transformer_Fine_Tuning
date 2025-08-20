@@ -130,9 +130,8 @@ for epoch in range(EPOCHS):
   train_losses.append(train_loss)
 
   if accelerator.is_main_process:
-    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}")
     print(f"Epoch {epoch+1}: Train Acc = {train_acc:.4f}")
-
+    print(f"Epoch {epoch+1}: Train Loss = {train_loss:.4f}")
 
   model.eval()
   val_loss_acum = 0.0
