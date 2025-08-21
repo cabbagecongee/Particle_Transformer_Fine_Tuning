@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-job-base25pct
+  name: tn-job-base45pct4n
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -16,7 +16,7 @@ spec:
         operator: "Exists"
         effect: "NoSchedule"
       containers:
-      - name: tn-job-base25pct
+      - name: tn-job-base45pct4n
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         command:
         - sh
@@ -34,7 +34,7 @@ spec:
           nvidia-smi && \
           mkdir -p /mnt/data/output && \
           export TORCH_DISTRIBUTED_DEBUG=DETAIL && \
-          accelerate launch --num_processes=4  --mixed_precision="fp16" base25%.py
+          accelerate launch --num_processes=4  --mixed_precision="fp16" base45%_4n.py
         volumeMounts:
           - name: git-repo
             mountPath: /mnt/repo
