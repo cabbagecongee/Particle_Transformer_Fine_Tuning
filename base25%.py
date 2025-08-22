@@ -28,7 +28,7 @@ from torch.optim.lr_scheduler import OneCycleLR
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 50
+EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
