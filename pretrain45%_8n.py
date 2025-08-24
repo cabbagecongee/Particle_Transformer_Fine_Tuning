@@ -1,7 +1,7 @@
-#changes: change training split to (5%), validation(5%)
+#changes: change training split to (45%), validation(15%)
 #model size 8 layers
 #with AdamW instead of RAdam with Lookahead
-#epochs 10
+#epochs 14
 # base training
 
 #the following training is based on parameters specified in https://arxiv.org/pdf/2401.13536
@@ -12,7 +12,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from optimizer import Lookahead
 from torch.optim import AdamW
 from model import ParticleTransformerBackbone
 from dataloader import IterableJetDataset
@@ -23,33 +22,16 @@ import csv
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 from datetime import timedelta
-from torch.optim.lr_scheduler import OneCycleLR
 
 
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 10
+EPOCHS = 15
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
-TAU_LABELS = set(
-    [12, 13, 14] +
-    list(range(22, 25)) +
-    list(range(38, 41)) +
-    list(range(67, 70)) +
-    list(range(80, 83)) +
-    list(range(103, 115)) +
-    list(range(143, 161))
-)
-
-QCD_LABELS = set(range(161, 188))
-
-ALLOWED_LABELS = TAU_LABELS | QCD_LABELS
-
-
-
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_base5%.csv")
+metrics_path = os.path.join(SAVE_DIR, "training_metrics_pretrain45_8n.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=False)
@@ -79,11 +61,11 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.6*n)]
 
-train_dataset = IterableJetDataset(train_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
-val_dataset = IterableJetDataset(val_files, allowed_labels=ALLOWED_LABELS, tau_labels=TAU_LABELS)
+train_dataset = IterableJetDataset(train_files)
+val_dataset = IterableJetDataset(val_files)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=4)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=4)
@@ -95,8 +77,9 @@ total_steps = num_iterations * EPOCHS
 
 model = ParticleTransformerBackbone(
     input_dim=19,         
-    num_classes=2,      
+    num_classes=188,      
     use_hlfs = False,
+    num_layers=8
   )
 
 criterion = nn.CrossEntropyLoss()
@@ -187,7 +170,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base5%_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain45_8n_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -196,7 +179,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base5%_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"pretrain45_8n_best_acc_epoch{epoch+1}.pt")
             )
 
 if accelerator.is_main_process:
@@ -223,7 +206,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "base5%_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain45_8n_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -236,7 +219,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "base5%_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, "pretrain45_8n_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
