@@ -49,14 +49,25 @@ def read_file(
       return x
 
   table = ak.Array(ak.from_parquet(filepath))
-  num_events = len(table)
+
+  y = ak.to_numpy(table[label_key]).astype('int64')
+
+  if allowed_labels is not None:
+    keep = np.isin(y, list(allowed_labels))
+    table = table[keep]
+    y = y[keep]
+    y = np.array([1 if label in tau_labels else 0 for label in y], dtype=np.int64)
 
   p4 = vector.zip({
-      'px': table['part_px'],
-      'py': table['part_py'],
-      'pz': table['part_pz'],
-      'E': table['part_energy']
+  'px': table['part_px'],
+  'py': table['part_py'],
+  'pz': table['part_pz'],
+  'E': table['part_energy']
   })
+
+  table["part_pt"] = p4.pt
+  table["part_eta"] = p4.eta
+  table["part_phi"] = p4.phi
 
   # Shape: (num_events, 2, max_num_particles, 4)
   v_particles = np.stack([
@@ -66,25 +77,12 @@ def read_file(
       ak.to_numpy(pad(p4.E, max_num_particles))
   ], axis=-1)
 
-  table["part_pt"] = p4.pt
-  table["part_eta"] = p4.eta
-  table["part_phi"] = p4.phi
-
-  y = ak.to_numpy(table[label_key]).astype('int64')
-
-  if allowed_labels is not None:
-    mask = np.isin(y, list(allowed_labels))
-    table = table[mask]
-    y = y[mask]
-    y = np.array([1 if label in tau_labels else 0 for label in y])
-
   x_particles = np.stack([ak.to_numpy(pad(table[n], maxlen=max_num_particles)) for n in particle_features], axis=-1)
   # x_particles = np.transpose(x_particles, (0, 2, 1))
 
   # Mask is 1 if pt > 0 (real particle), 0 if padding
   # Shape: (num_events, max_num_particles)
-  mask = (v_particles[:, :, 0]**2 + v_particles[:, :, 1]**2 > 1e-9).astype('float32')
-
+  mask = (ak.to_numpy(pad(table['part_pt'], max_num_particles)) > 0).astype(bool)
 
   x_jets = np.stack([ak.to_numpy(table[n]) for n in jet_features], axis=1)
 
@@ -135,36 +133,42 @@ class IterableJetDataset(IterableDataset):
           torch.tensor(x_particles[i], dtype=torch.float).clone(),
           torch.tensor(x_jets[i], dtype=torch.float).clone(),
           torch.tensor(v_particles[i], dtype=torch.float).clone(),
-           torch.tensor(mask[i], dtype=torch.float),
+           torch.tensor(mask[i], dtype=torch.bool),
           torch.tensor(labels[i], dtype=torch.long).clone(),
       )
-  # def __iter__(self):
-  #   if self.shuffle_files:
-  #     random.shuffle(self.filepaths)
-  #   for filepath in self.filepaths:
-  #     yield from self.parse_files(filepath)
 
   def __iter__(self):
     worker_info = torch.utils.data.get_worker_info()
 
-    if self.shuffle_files: #shuffles for each epoch
-        random.shuffle(self.filepaths)
+    #Rank sharding (DDP)
+    try:
+        import torch.distributed as dist
+        if dist.is_available() and dist.is_initialized():
+           world_size = dist.get_world_size()
+           rank = dist.get_rank()
+        else:
+           world_size, rank = 1, 0
+    except Exception:
+       world_size, rank = 1, 0 
+    
+    file_list = list(self.filepaths)
 
-    # Determine which files this worker should process
-    if worker_info is None:
-        # Case 1: Single-process loading (num_workers=0)
-        # The main process handles all files.
-        file_list = self.filepaths
-    else:
-        # Case 2: Multi-process loading
-        # Split the workload. Each worker gets a unique slice of the file list.
-        worker_id = worker_info.id
-        num_workers = worker_info.num_workers
-        file_list = self.filepaths[worker_id::num_workers]
+    if self.shuffle_files:
+       random.shuffle(file_list)
 
-    for filepath in file_list:
-        try:
-            yield from self.parse_files(filepath)
-        except Exception as e:
-            print(f"ERROR: Worker {worker_info.id if worker_info else 0} failed to process {filepath}. Reason: {e}. Skipping file.")
-            continue
+    #Shard by rank
+    file_list = file_list[rank::world_size]
+
+    #Shard by worker
+    if worker_info is not None:
+       wid = worker_info.id
+       nw = worker_info.num_workers
+       file_list = file_list[wid::nw]
+    
+    for fp in file_list:
+      try:
+        yield from self.parse_files(fp)
+      except Exception as e:
+        wid = worker_info.id if worker_info else 0 
+        print(f"ERROR: Worker {wid} failed to process {fp}. Reason: {e}. Skipping.")
+        continue
