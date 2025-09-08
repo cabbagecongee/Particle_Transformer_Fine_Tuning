@@ -44,7 +44,7 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
 
-
+NAME = "control_model_10%"
 BATCH_SIZE = 256
 LR = 1e-4
 EPOCHS = 10
@@ -57,7 +57,7 @@ QCD_LABELS = set(range(161, 188))
 ALLOWED_LABELS = TOP_LABELS | QCD_LABELS
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
-metrics_path = os.path.join(SAVE_DIR, "training_metrics_base5%.csv")
+metrics_path = os.path.join(SAVE_DIR, f"training_metrics_{NAME}.csv")
 
 kwargs = InitProcessGroupKwargs(timeout=timedelta(hours=2))
 ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=False)
@@ -87,8 +87,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.1*n)]
+val_files = filepaths[int(0.1*n):int(0.2*n)]
 
 train_dataset = IterableJetDataset(train_files, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
 val_dataset = IterableJetDataset(val_files, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
@@ -237,7 +237,7 @@ for epoch in range(EPOCHS):
             best_val_loss_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base5%_best_loss_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"{NAME}_best_loss_epoch{epoch+1}.pt")
             )
 
         # save best‐accuracy checkpoint
@@ -246,7 +246,7 @@ for epoch in range(EPOCHS):
             best_val_acc_epoch = epoch + 1
             accelerator.save(
                 accelerator.unwrap_model(model).state_dict(),
-                os.path.join(SAVE_DIR, f"base5%_best_acc_epoch{epoch+1}.pt")
+                os.path.join(SAVE_DIR, f"{NAME}_best_acc_epoch{epoch+1}.pt")
             )
   else: 
     val_losses.append(float('nan'))
@@ -270,7 +270,7 @@ if accelerator.is_main_process:
     plt.tight_layout()
 
 if accelerator.is_main_process:
-    plot_path = os.path.join(SAVE_DIR, "base5%_accuracy_plot.png")
+    plot_path = os.path.join(SAVE_DIR, f"{NAME}_accuracy_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:
@@ -288,7 +288,7 @@ if accelerator.is_main_process:
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plot_path = os.path.join(SAVE_DIR, "base5%_loss_plot.png")
+    plot_path = os.path.join(SAVE_DIR, f"{NAME}_loss_plot.png")
     plt.savefig(plot_path)
 
 if accelerator.is_main_process:

@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-job-base5pct
+  name: tn-job-control-5pct
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -17,7 +17,7 @@ spec:
         effect: "NoSchedule"
 
       containers:
-      - name: tn-job-base5pct
+      - name: tn-job-control-5pct
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         env:
         - name: NCCL_SOCKET_IFNAME
@@ -44,25 +44,19 @@ spec:
         - sh
         - -c
         - |
-          set -euo pipefail
           apt update && \
-          apt install -y --no-install-recommends wget git build-essential python3-dev && \
+          apt install -y wget && \
           cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
           echo "[INFO] Installing Python packages..." && \
           pip install --upgrade pip && \
-          pip install accelerate numpy pandas matplotlib tqdm scikit-learn seaborn \
-                      weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 \
-                      awkward uproot vector torchmetrics && \
+          pip install accelerate \
+                      numpy pandas matplotlib tqdm scikit-learn seaborn \
+                      weaver-core jetnet tensorboard aiohttp requests pyarrow==14.0.1 && \
           echo "[INFO] Checking GPU availability..." && \
-          nvidia-smi || true && \
+          nvidia-smi && \
           mkdir -p /mnt/data/output && \
-          echo "[INFO] Launching training..." && \
-          accelerate launch \
-              --num_machines 1 \
-              --machine_rank 0 \
-              --num_processes 4 \
-              --main_process_port 29500 \
-              base5pct.py
+          export TORCH_DISTRIBUTED_DEBUG=DETAIL && \
+          accelerate launch --num_processes=4 control_model.py
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
@@ -129,3 +123,4 @@ spec:
                   - NVIDIA-L40
                   - NVIDIA-RTX-A6000
                   - Quadro-RTX-8000
+
