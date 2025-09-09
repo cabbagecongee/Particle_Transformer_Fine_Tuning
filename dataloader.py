@@ -109,12 +109,13 @@ class JetDataset(torch.utils.data.Dataset):
 
 
 class IterableJetDataset(IterableDataset):
-  def __init__(self, filepaths, shuffle_files=True, max_num_particles=128, allowed_labels=None, tau_labels=None):
+  def __init__(self, filepaths, buffer_size=200000, shuffle_files=True, max_num_particles=128, allowed_labels=None, tau_labels=None):
     self.filepaths = filepaths
     self.shuffle_files = shuffle_files
     self.max_num_particles = max_num_particles
     self.allowed_labels = allowed_labels
     self.tau_labels = tau_labels
+    self.buffer_size = buffer_size
 
 
   def parse_files(self, filepath):
@@ -164,11 +165,38 @@ class IterableJetDataset(IterableDataset):
        wid = worker_info.id
        nw = worker_info.num_workers
        file_list = file_list[wid::nw]
+
+    buffer = []
     
-    for fp in file_list:
-      try:
-        yield from self.parse_files(fp)
-      except Exception as e:
-        wid = worker_info.id if worker_info else 0 
-        print(f"ERROR: Worker {wid} failed to process {fp}. Reason: {e}. Skipping.")
-        continue
+    # Create a generator that yields all samples from the assigned files
+    def sample_generator():
+        for fp in file_list:
+            try:
+                yield from self.parse_files(fp)
+            except Exception as e:
+                wid = worker_info.id if worker_info else 0
+                print(f"ERROR: Worker {wid} failed to process {fp}. Reason: {e}. Skipping.")
+                continue
+    
+    # Fill the initial buffer
+    sample_gen = sample_generator()
+    for sample in sample_gen:
+        buffer.append(sample)
+        if len(buffer) >= self.buffer_size:
+            break
+    
+    # Shuffle the initial buffer
+    random.shuffle(buffer)
+
+    # Main loop: yield a random sample from the buffer and replace it with a new one
+    for sample in sample_gen:
+        # Pop a random sample from buffer to yield
+        idx_to_yield = random.randint(0, len(buffer) - 1)
+        yield buffer.pop(idx_to_yield)
+        # Add the new sample to the buffer
+        buffer.append(sample)
+    
+    # After all files are read, drain the rest of the buffer
+    while buffer:
+        idx_to_yield = random.randint(0, len(buffer) - 1)
+        yield buffer.pop(idx_to_yield)

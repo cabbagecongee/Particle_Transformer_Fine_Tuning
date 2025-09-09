@@ -44,8 +44,8 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
 
-NAME = "control_model_20%"
-BATCH_SIZE = 512
+NAME = "control_model_5%_new_dataloader"
+BATCH_SIZE = 256
 LR = 1e-4
 EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
@@ -87,11 +87,11 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.2*n)]
-val_files = filepaths[int(0.2*n):int(0.35*n)]
+train_files = filepaths[:int(0.05*n)]
+val_files = filepaths[int(0.05*n):int(0.1*n)]
 
-train_dataset = IterableJetDataset(train_files, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
-val_dataset = IterableJetDataset(val_files, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
+train_dataset = IterableJetDataset(train_files, buffer_size=200000, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
+val_dataset = IterableJetDataset(val_files, buffer_size=200000, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
