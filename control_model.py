@@ -44,7 +44,7 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
 
-NAME = "control_model_5%_new_dataloader"
+NAME = "control_model_5%_new_dataloader_weights"
 BATCH_SIZE = 256
 LR = 1e-4
 EPOCHS = 10
@@ -126,7 +126,8 @@ model = ParticleTransformerBackbone(
     use_hlfs = False,
   )
 
-criterion = nn.CrossEntropyLoss()
+weights = torch.tensor([3.8, 1.0], device=accelerator.device) #top jets are 3.8x more likely than QCD
+criterion = nn.CrossEntropyLoss(weight=weights)
 optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999))
 
 train_loader, val_loader, optimizer, model = accelerator.prepare(
