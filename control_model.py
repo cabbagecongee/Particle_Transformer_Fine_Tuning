@@ -45,7 +45,7 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
 
-NAME = "control_model_20%_weights"
+NAME = "control_model_45%_weights"
 BATCH_SIZE = 512
 LR = 1e-4
 EPOCHS = 10
@@ -88,8 +88,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.2*n)]
-val_files = filepaths[int(0.2*n):int(0.3*n)]
+train_files = filepaths[:int(0.45*n)]
+val_files = filepaths[int(0.45*n):int(0.6*n)]
 
 train_dataset = IterableJetDataset(train_files, buffer_size=200000, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
 val_dataset = IterableJetDataset(val_files, buffer_size=200000, allowed_labels=ALLOWED_LABELS, tau_labels=TOP_LABELS)
