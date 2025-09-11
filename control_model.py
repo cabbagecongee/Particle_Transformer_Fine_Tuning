@@ -45,7 +45,7 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
     return total
 
 NAME = "control_model_5%_2.0-1.0_weights"
-BATCH_SIZE = 256
+BATCH_SIZE = 512
 LR = 1e-4
 EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
