@@ -46,7 +46,7 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
 
 NAME = "multiclass_10%"
 BATCH_SIZE = 512
-LR = 1e-5
+LR = 1e-4
 EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
