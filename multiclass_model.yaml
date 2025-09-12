@@ -17,7 +17,7 @@ spec:
         effect: "NoSchedule"
 
       containers:
-      - name: tn-multiclass-10pct
+      - name: tn-multiclass-5pct
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         env:
         - name: NCCL_SOCKET_IFNAME
@@ -118,7 +118,7 @@ spec:
               - key: nvidia.com/gpu.product
                 operator: In
                 values:
-                  - NVIDIA-A10	24G
+                  - NVIDIA-A10
                   - NVIDIA-GeForce-RTX-3090
                   - NVIDIA-GeForce-RTX-4090
                   - NVIDIA-TITAN-RTX
