@@ -44,10 +44,10 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
 
-NAME = "multiclass_5%"
+NAME = "multiclass_10%"
 BATCH_SIZE = 512
 LR = 1e-5
-EPOCHS = 15
+EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
@@ -82,8 +82,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.1*n)]
+val_files = filepaths[int(0.1*n):int(0.2*n)]
 
 train_dataset = IterableJetDataset(train_files, buffer_size=200000)
 val_dataset = IterableJetDataset(val_files, buffer_size=200000)
