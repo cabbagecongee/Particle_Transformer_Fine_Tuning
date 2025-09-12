@@ -24,7 +24,7 @@ def parquet_num_rows(path: str) -> int:
     """Fast: read metadata only."""
     return pq.ParquetFile(path).metadata.num_rows
 
-def parquet_num_rows_allowed(path: str, allowed_labels: set | None) -> int:
+def parquet_num_rows_allowed(path: str, allowed_labels: set | None = None) -> int:
     """
     Fast-ish: scans ONLY the `jet_label` column row-group by row-group and counts
     rows in `allowed_labels`. If `allowed_labels` is None, returns total rows.
