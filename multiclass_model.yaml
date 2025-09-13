@@ -17,7 +17,7 @@ spec:
         effect: "NoSchedule"
 
       containers:
-      - name: tn-multiclass-20pct
+      - name: tn-multiclass-10pct
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         env:
         - name: NCCL_SOCKET_IFNAME
