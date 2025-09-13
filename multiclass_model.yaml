@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-multiclass-20pct
+  name: tn-multiclass-45pct
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -17,7 +17,7 @@ spec:
         effect: "NoSchedule"
 
       containers:
-      - name: tn-multiclass-20pct
+      - name: tn-multiclass-45pct
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         env:
         - name: NCCL_SOCKET_IFNAME
