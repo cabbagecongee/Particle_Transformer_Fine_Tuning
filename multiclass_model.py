@@ -19,6 +19,13 @@ from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 
+NAME = "multiclass_10%_scheduler_20e"
+BATCH_SIZE = 512
+LR = 1e-4
+EPOCHS = 20
+DATA_DIR = "/mnt/data/jet_data"
+SAVE_DIR = "/mnt/data/output"
+
 def parquet_num_rows(path: str) -> int:
     """Fast: read metadata only."""
     return pq.ParquetFile(path).metadata.num_rows
@@ -43,13 +50,6 @@ def parquet_num_rows_allowed(path: str, allowed_labels: set | None = None) -> in
         # Faster than np.isin for small set sizes:
         total += np.count_nonzero(np.in1d(y, allowed_arr, assume_unique=False))
     return total
-
-NAME = "multiclass_10%"
-BATCH_SIZE = 512
-LR = 1e-4
-EPOCHS = 10
-DATA_DIR = "/mnt/data/jet_data"
-SAVE_DIR = "/mnt/data/output"
 
 filelist_path = os.path.join(DATA_DIR, "filelist.txt")
 metrics_path = os.path.join(SAVE_DIR, f"training_metrics_{NAME}.csv")
@@ -82,8 +82,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.1*n)]
+val_files = filepaths[int(0.1*n):int(0.2*n)]
 
 train_dataset = IterableJetDataset(train_files, buffer_size=200000)
 val_dataset = IterableJetDataset(val_files, buffer_size=200000)
@@ -119,9 +119,10 @@ model = ParticleTransformerBackbone(
 
 criterion = nn.CrossEntropyLoss()
 optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999))
+scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_iterations_train * EPOCHS, eta_min=1e-7)
 
-train_loader, val_loader, optimizer, model = accelerator.prepare(
-    train_loader, val_loader, optimizer, model
+train_loader, val_loader, optimizer, model, scheduler = accelerator.prepare(
+    train_loader, val_loader, optimizer, model, scheduler
 )
 
 
@@ -161,6 +162,7 @@ for epoch in range(EPOCHS):
         loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
+    scheduler.step()
 
     correct += (outputs.argmax(1) == labels).sum().item()
     total   += labels.size(0)
