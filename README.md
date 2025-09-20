@@ -1,3 +1,3 @@
-# Particle_Transformer_Fine_Tunning
+# Particle_Transformer_Fine_Tuning
 
 This is the repository for fine tunning the Particle Transformer model to identify Higgs boson decays into tau lepton pairs (H → ττ). 
