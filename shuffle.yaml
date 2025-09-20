@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tn-job-jetclass-shuffle
+  namespace: cms-ml
+spec:
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      tolerations:
+      - key: "nautilus.io/issue"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "nautilus.io/reservation"
+        operator: "Exists"
+        effect: "NoSchedule"
+
+      initContainers:
+      - name: init-clone-repo
+        image: alpine/git
+        args:
+        - clone
+        - --single-branch
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+
+      containers:
+      - name: tn-job-jetclass-shuffle
+        image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
+        command:
+        - sh
+        - -c
+        - |
+          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          echo "[INFO] Installing Python packages for shuffling..." && \
+          pip install --upgrade pip && \
+          pip install uproot awkward "pyarrow==14.0.1" tqdm && \
+          echo "[INFO] Starting shuffling script..." && \
+          python shuffle.py \
+            --input "/mnt/data/jet_data/*.parquet" \
+            --out-dir "/mnt/data/shuffled_jet_data" \
+            --threads 8 \
+            --chunk-size 10000
+        volumeMounts:
+        - name: git-repo
+          mountPath: /mnt/repo
+        - name: tn-pvc-base-jetclass2
+          mountPath: /mnt/data
+        - name: dshm
+          mountPath: /dev/shm
+        resources:
+          limits:
+            memory: "64Gi"
+            cpu: "8" 
+          requests:
+            memory: "64Gi"
+            cpu: "8"
+
+      volumes:
+      - name: git-repo
+        emptyDir: {}
+      - name: tn-pvc-base-jetclass2
+        persistentVolumeClaim:
+          claimName: tn-pvc-base-jetclass2
+      - name: dshm
+        emptyDir:
+          medium: Memory
+          sizeLimit: 16Gi
+
