@@ -46,7 +46,7 @@ spec:
         - |
           apt update && \
           apt install -y wget && \
-          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          cd /mnt/repo/Particle_Transformer_Fine_Tuning && \
           echo "[INFO] Installing Python packages..." && \
           pip install --upgrade pip && \
           pip install accelerate \
@@ -80,8 +80,8 @@ spec:
         args:
         - clone
         - --single-branch
-        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
-        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tuning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tuning
         resources:
           limits:
             memory: "900Mi"

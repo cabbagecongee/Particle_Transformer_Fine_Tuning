@@ -15,6 +15,15 @@ spec:
       - key: "nautilus.io/reservation"
         operator: "Exists"
         effect: "NoSchedule"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: kubernetes.io/hostname
+                operator: NotIn
+                values:
+                - gp-engine.usd.edu 
 
       initContainers:
       - name: init-clone-repo
@@ -22,11 +31,18 @@ spec:
         args:
         - clone
         - --single-branch
-        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tunning.git
-        - /mnt/repo/Particle_Transformer_Fine_Tunning
+        - https://github.com/cabbagecongee/Particle_Transformer_Fine_Tuning.git
+        - /mnt/repo/Particle_Transformer_Fine_Tuning
         volumeMounts:
         - name: git-repo
           mountPath: /mnt/repo
+        resources:
+          limits:
+            memory: "900Mi"
+            cpu: "2"
+          requests:
+            memory: "900Mi"
+            cpu: "2"
 
       containers:
       - name: tn-job-jetclass-shuffle
@@ -35,13 +51,13 @@ spec:
         - sh
         - -c
         - |
-          cd /mnt/repo/Particle_Transformer_Fine_Tunning && \
+          cd /mnt/repo/Particle_Transformer_Fine_Tuning && \
           echo "[INFO] Installing Python packages for shuffling..." && \
           pip install --upgrade pip && \
           pip install uproot awkward "pyarrow==14.0.1" tqdm && \
           echo "[INFO] Starting shuffling script..." && \
           python shuffle.py \
-            --input "/mnt/data/jet_data/*.parquet" \
+            --input /mnt/data/jet_data/*.parquet \
             --out-dir "/mnt/data/shuffled_jet_data" \
             --threads 8 \
             --chunk-size 10000
@@ -55,7 +71,7 @@ spec:
         resources:
           limits:
             memory: "64Gi"
-            cpu: "8" 
+            cpu: "8"
           requests:
             memory: "64Gi"
             cpu: "8"
@@ -70,4 +86,3 @@ spec:
         emptyDir:
           medium: Memory
           sizeLimit: 16Gi
-

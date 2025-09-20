@@ -1,15 +1,17 @@
 #script from : https://github.com/zichunhao/RINO/blob/main/rino/preprocess/jetclass/shuffle.py 
+#edited to allow for parquet file reading
 
 import argparse
 from pathlib import Path
 import random
-import uproot
 import numpy as np
 import awkward as ak
 from tqdm import tqdm
 from dataclasses import dataclass
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, Dict
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 @dataclass
@@ -36,10 +38,10 @@ class ChunkData:
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Mix ROOT files with parallel processing"
+        description="Mix Parquet files with parallel processing"
     )
     parser.add_argument(
-        "--input", nargs="+", required=True, help="List of input ROOT files"
+        "--input", nargs="+", required=True, help="List of input Parquet files"
     )
     parser.add_argument(
         "--out-dir", required=True, help="Output directory for mixed files"
@@ -67,13 +69,13 @@ def parse_args():
         action="store_true",
         help="Disable shuffling of entries within output files",
     )
-    parser.add_argument(
-        "--compression",
-        type=int,
-        choices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-        default=4,
-        help="Compression level (0-9, default: 4)",
-    )
+    # parser.add_argument(
+    #     "--compression",
+    #     type=int,
+    #     choices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+    #     default=4,
+    #     help="Compression level (0-9, default: 4)",
+    # )
     return parser.parse_args()
 
 
@@ -85,9 +87,9 @@ def shuffle_entries(data):
 
 
 class ParallelMixer:
-    def __init__(self, files, chunk_size, n_threads, tree_name="tree"):
+    def __init__(self, files, chunk_size, n_threads):
         self.chunk_size = chunk_size
-        self.tree_name = tree_name
+        # self.tree_name = tree_name
         self.n_threads = n_threads
         self.active_files = []
         self.branch_names = None
@@ -96,14 +98,16 @@ class ParallelMixer:
         # Initialize file information
         print("Reading file information...")
         for f in tqdm(files, desc="Scanning input files"):
-            with uproot.open(f) as root_file:
-                tree = root_file[tree_name]
-                entries = tree.num_entries
+            try:
+                pq_file = pq.ParquetFile(f)
+                entries = pq_file.metadata.num_rows
                 if entries > 0:
                     if self.branch_names is None:
-                        self.branch_names = list(tree.keys())
+                        self.branch_names = pq_file.schema.names
                     self.active_files.append(FileInfo(f, entries))
                     self.total_entries += entries
+            except Exception as e:
+                print(f"Warning: Skipping file {f} due to error: {e}")
 
         self.executor = ThreadPoolExecutor(max_workers=n_threads)
 
@@ -114,16 +118,16 @@ class ParallelMixer:
             if current_chunk_size <= 0:
                 return None
 
-            with uproot.open(file_info.path) as root_file:
-                tree = root_file[self.tree_name]
-                data = tree.arrays(
-                    self.branch_names,
-                    library="ak",
-                    entry_start=file_info.current_pos,
-                    entry_stop=file_info.current_pos + current_chunk_size,
-                )
-                file_info.current_pos += current_chunk_size
-                return ChunkData(file_id, data, current_chunk_size)
+            table = pq.read_table(file_info.path, columns=self.branch_names)
+            
+            # Slice the table to get the current chunk
+            chunk_table = table.slice(file_info.current_pos, current_chunk_size)
+            
+            # Convert to an awkward array, which the rest of the script expects
+            data = ak.from_arrow(chunk_table)
+
+            file_info.current_pos += current_chunk_size
+            return ChunkData(file_id, data, current_chunk_size)
 
         except Exception as e:
             print(f"Error reading file {file_info.path}: {e}")
@@ -181,9 +185,7 @@ def mix_files(
     chunk_size,
     n_threads=4,
     seed=42,
-    tree_name="tree",
     shuffle=True,
-    compression=4,
 ):
     """Mix ROOT files with parallel processing"""
     random.seed(seed)
@@ -195,7 +197,7 @@ def mix_files(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Mixer
-    mixer = ParallelMixer(input_files, chunk_size, n_threads, tree_name)
+    mixer = ParallelMixer(input_files, chunk_size, n_threads)
     if not mixer.active_files:
         print("No valid input files found!")
         return
@@ -216,11 +218,9 @@ def mix_files(
                 chunks = shuffle_entries(chunks)
 
             # Write to output file with compression
-            output_path = output_dir / f"mixed_{iteration}.root"
-            with uproot.recreate(
-                output_path, compression=uproot.ZLIB(compression)
-            ) as out_file:
-                out_file[tree_name] = chunks
+            output_path = output_dir / f"mixed_{iteration}.parquet"
+            table_to_write = ak.to_arrow(chunks)
+            pq.write_table(table_to_write, output_path, compression='zstd')
 
             # Update progress
             current_entries = len(chunks[mixer.branch_names[0]])
@@ -249,7 +249,6 @@ def main():
         args.threads,
         args.seed,
         shuffle=not args.no_shuffle,
-        compression=args.compression,
     )
 
 
