@@ -119,10 +119,10 @@ model = ParticleTransformerBackbone(
 
 criterion = nn.CrossEntropyLoss()
 optimizer = AdamW(model.parameters(), lr=LR, betas=(0.95,0.999))
-scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_iterations_train * EPOCHS, eta_min=1e-7)
+# scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=num_iterations_train * EPOCHS, eta_min=1e-7)
 
-train_loader, val_loader, optimizer, model, scheduler = accelerator.prepare(
-    train_loader, val_loader, optimizer, model, scheduler
+train_loader, val_loader, optimizer, model = accelerator.prepare(
+    train_loader, val_loader, optimizer, model
 )
 
 
@@ -162,7 +162,7 @@ for epoch in range(EPOCHS):
         loss = criterion(outputs, labels)
     accelerator.backward(loss)
     optimizer.step()
-    scheduler.step()
+    # scheduler.step()
 
     correct += (outputs.argmax(1) == labels).sum().item()
     total   += labels.size(0)
