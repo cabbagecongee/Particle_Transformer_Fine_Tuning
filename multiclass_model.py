@@ -19,7 +19,7 @@ from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 
-NAME = "multiclass_5%_ijd"
+NAME = "multiclass_5%_ijd_plain"
 BATCH_SIZE = 512
 LR = 1e-4
 EPOCHS = 10
