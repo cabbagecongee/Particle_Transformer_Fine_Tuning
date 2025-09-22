@@ -13,7 +13,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import matplotlib.pyplot as plt
-from optimizer import Lookahead
+from utils.optimizer import Lookahead
 from torch.optim import AdamW
 from model import ParticleTransformerBackbone
 from dataloader import IterableJetDataset
