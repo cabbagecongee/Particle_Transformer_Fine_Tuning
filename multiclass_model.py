@@ -14,15 +14,15 @@ from torch.utils.data import DataLoader
 from torch.optim import AdamW
 import matplotlib.pyplot as plt
 from model import ParticleTransformerBackbone
-from dataloader import IterableJetDataset
+from dataloader import IterableJetDataset, InterleavedJetDataset
 from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 
-NAME = "multiclass_45%_scheduler_20e"
+NAME = "multiclass_5%_ijd"
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 20
+EPOCHS = 10
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
@@ -82,11 +82,11 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.45*n)]
-val_files = filepaths[int(0.45*n):int(0.6*n)]
+train_files = filepaths[:int(0.05*n)]
+val_files = filepaths[int(0.05*n):int(0.1*n)]
 
-train_dataset = IterableJetDataset(train_files, buffer_size=200000)
-val_dataset = IterableJetDataset(val_files, buffer_size=200000)
+train_dataset = InterleavedJetDataset(train_files, batch_size=BATCH_SIZE)
+val_dataset = InterleavedJetDataset(val_files, batch_size=BATCH_SIZE)
 
 train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
 val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
@@ -222,7 +222,7 @@ for epoch in range(EPOCHS):
     val_losses.append(avg_val_loss)
     val_acc.append(val_accuracy)
     if accelerator.is_main_process:
-        print(f"Validation Loss: {avg_val_loss:.4f}\n Validation Accuracy: {val_accuracy:.4f}")
+        print(f"Validation Accuracy: {val_accuracy:.4f}\n Validation Loss: {avg_val_loss:.4f}")
 
         # save best‐loss checkpoint
         if avg_val_loss < best_val_loss:
