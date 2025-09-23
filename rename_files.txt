@@ -1,0 +1,127 @@
+ten percent with scheduler
+Epoch 1/10 [train]:  25%|██▌       | 1221/4883 [38:21<1:55:01,  1.88s/it]
+Epoch 1: Train Acc = 0.2131
+Epoch 1: Train Loss = 3.4198
+Epoch 1/10 [val]:  25%|██▌       | 1270/5079 [21:11<1:03:34,  1.00s/it]
+Validation Accuracy: 0.2212
+ Validation Loss: 3.1689
+Epoch 2/10 [train]:  25%|██▌       | 1221/4883 [38:34<1:55:40,  1.90s/it]
+Epoch 2: Train Acc = 0.2693
+Epoch 2: Train Loss = 2.9368
+Epoch 2/10 [val]:  25%|██▌       | 1270/5079 [20:50<1:02:30,  1.02it/s]
+Validation Accuracy: 0.2390
+ Validation Loss: 3.0166
+Epoch 3/10 [train]:  25%|██▌       | 1221/4883 [38:09<1:54:26,  1.88s/it]
+Epoch 3: Train Acc = 0.2851
+Epoch 3: Train Loss = 2.8225
+Epoch 3/10 [val]:  25%|██▌       | 1270/5079 [20:13<1:00:40,  1.05it/s]
+Validation Accuracy: 0.3080
+ Validation Loss: 2.7143
+Epoch 4/10 [train]:  25%|██▌       | 1221/4883 [38:12<1:54:34,  1.88s/it]
+Epoch 4: Train Acc = 0.2936
+Epoch 4: Train Loss = 2.7037
+Epoch 4/10 [val]:  25%|██▌       | 1270/5079 [19:54<59:43,  1.06it/s]  
+Validation Accuracy: 0.3341
+ Validation Loss: 2.5559
+Epoch 5/10 [train]:  25%|██▌       | 1221/4883 [38:11<1:54:33,  1.88s/it]
+Epoch 5: Train Acc = 0.2797
+Epoch 5: Train Loss = 2.7063
+Epoch 5/10 [val]:  25%|██▌       | 1270/5079 [20:32<1:01:37,  1.03it/s]
+Validation Accuracy: 0.3573
+ Validation Loss: 2.4831
+Epoch 6/10 [train]:  25%|██▌       | 1221/4883 [38:43<1:56:09,  1.90s/it]
+Epoch 6: Train Acc = 0.3682
+Epoch 6: Train Loss = 2.4043
+Epoch 6/10 [val]:  25%|██▌       | 1270/5079 [20:15<1:00:47,  1.04it/s]
+Validation Accuracy: 0.3942
+ Validation Loss: 2.2888
+Epoch 7/10 [train]:  25%|██▌       | 1221/4883 [38:04<1:54:12,  1.87s/it]
+Epoch 7: Train Acc = 0.3732
+Epoch 7: Train Loss = 2.3769
+Epoch 7/10 [val]:  25%|██▌       | 1270/5079 [20:13<1:00:40,  1.05it/s]
+Validation Accuracy: 0.3469
+ Validation Loss: 2.4792
+Epoch 8/10 [train]:  25%|██▌       | 1221/4883 [38:37<1:55:50,  1.90s/it]
+Epoch 8: Train Acc = 0.3262
+Epoch 8: Train Loss = 2.5291
+Epoch 8/10 [val]:  25%|██▌       | 1270/5079 [20:20<1:01:00,  1.04it/s]
+Validation Accuracy: 0.3626
+ Validation Loss: 2.4003
+Epoch 9/10 [train]:  25%|██▌       | 1221/4883 [38:19<1:54:55,  1.88s/it]
+Epoch 9: Train Acc = 0.3617
+Epoch 9: Train Loss = 2.4088
+Epoch 9/10 [val]:  25%|██▌       | 1270/5079 [20:16<1:00:47,  1.04it/s]
+Validation Accuracy: 0.3519
+ Validation Loss: 2.4441
+Epoch 10/10 [train]:  25%|██▌       | 1221/4883 [38:03<1:54:08,  1.87s/it]
+Epoch 10: Train Acc = 0.3629
+Epoch 10: Train Loss = 2.4065
+Epoch 10/10 [val]:  25%|██▌       | 1270/5079 [20:54<1:02:41,  1.01it/s]
+Validation Accuracy: 0.2816
+ Validation Loss: 2.7028
+Saved metrics to /mnt/data/output/training_metrics_multiclass_5%_ijd.csv
+
+
+
+this is the actual 5% with a scheduler:
+Epoch 1/10 [train]:  25%|██▌       | 1221/4883 [38:12<1:54:34,  1.88s/it]
+Epoch 1: Train Acc = 0.2215
+Epoch 1: Train Loss = 3.3947
+Epoch 1/10 [val]:  25%|██▌       | 1270/5079 [21:06<1:03:19,  1.00it/s]
+Validation Accuracy: 0.1472
+ Validation Loss: 3.5085
+Epoch 2/10 [train]:  25%|██▌       | 1221/4883 [38:48<1:56:23,  1.91s/it]
+Epoch 2: Train Acc = 0.2255
+Epoch 2: Train Loss = 3.0805
+Epoch 2/10 [val]:  25%|██▌       | 1270/5079 [21:08<1:03:24,  1.00it/s]
+Validation Accuracy: 0.2137
+ Validation Loss: 3.0892
+Epoch 3/10 [train]:  25%|██▌       | 1221/4883 [38:06<1:54:16,  1.87s/it]
+Epoch 3: Train Acc = 0.2609
+Epoch 3: Train Loss = 2.8990
+Epoch 3/10 [val]:  25%|██▌       | 1270/5079 [21:13<1:03:38,  1.00s/it]
+Validation Accuracy: 0.2283
+ Validation Loss: 3.0376
+Epoch 4/10 [train]:  25%|██▌       | 1221/4883 [38:42<1:56:06,  1.90s/it]
+Epoch 4: Train Acc = 0.2423
+Epoch 4: Train Loss = 2.9432
+Epoch 4/10 [val]:  25%|██▌       | 1270/5079 [20:27<1:01:21,  1.03it/s]
+Validation Accuracy: 0.2117
+ Validation Loss: 3.0668
+Epoch 5/10 [train]:  25%|██▌       | 1221/4883 [38:34<1:55:40,  1.90s/it]
+Epoch 5: Train Acc = 0.2812
+Epoch 5: Train Loss = 2.7832
+Epoch 5/10 [val]:  25%|██▌       | 1270/5079 [20:52<1:02:35,  1.01it/s]
+Validation Accuracy: 0.2661
+ Validation Loss: 2.8123
+Epoch 6/10 [train]:  25%|██▌       | 1221/4883 [38:42<1:56:06,  1.90s/it]
+Epoch 6: Train Acc = 0.3070
+Epoch 6: Train Loss = 2.6322
+Epoch 6/10 [val]:  25%|██▌       | 1270/5079 [20:44<1:02:12,  1.02it/s]
+Validation Accuracy: 0.2891
+ Validation Loss: 2.7322
+Epoch 7/10 [train]:  25%|██▌       | 1221/4883 [38:35<1:55:44,  1.90s/it]
+Epoch 7: Train Acc = 0.3827
+Epoch 7: Train Loss = 2.3346
+Epoch 7/10 [val]:  25%|██▌       | 1270/5079 [20:49<1:02:27,  1.02it/s]
+Validation Accuracy: 0.3202
+ Validation Loss: 2.5904
+Epoch 8/10 [train]:  25%|██▌       | 1221/4883 [39:01<1:57:01,  1.92s/it]
+Epoch 8: Train Acc = 0.3371
+Epoch 8: Train Loss = 2.5073
+Epoch 8/10 [val]:  25%|██▌       | 1270/5079 [20:59<1:02:57,  1.01it/s]
+Validation Accuracy: 0.3051
+ Validation Loss: 2.6177
+Epoch 9/10 [train]:  25%|██▌       | 1221/4883 [38:41<1:56:01,  1.90s/it]
+Epoch 9: Train Acc = 0.3187
+Epoch 9: Train Loss = 2.5501
+Epoch 9/10 [val]:  25%|██▌       | 1270/5079 [20:48<1:02:25,  1.02it/s]
+Validation Accuracy: 0.2891
+ Validation Loss: 2.7173
+Epoch 10/10 [train]:  25%|██▌       | 1221/4883 [38:07<1:54:19,  1.87s/it]
+Epoch 10: Train Acc = 0.3362
+Epoch 10: Train Loss = 2.5029
+Epoch 10/10 [val]:  25%|██▌       | 1270/5079 [20:40<1:02:01,  1.02it/s]
+Validation Accuracy: 0.2948
+ Validation Loss: 2.6404
+Saved metrics to /mnt/data/output/training_metrics_multiclass_5%_ijd.csv
