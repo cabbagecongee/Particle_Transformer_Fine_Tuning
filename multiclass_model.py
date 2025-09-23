@@ -19,7 +19,7 @@ from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 
-NAME = "multiclass_5%_ijd_plain_20e"
+NAME = "multiclass_10%_ijd_plain_20e"
 BATCH_SIZE = 512
 LR = 1e-4
 EPOCHS = 20
@@ -82,8 +82,8 @@ with open(filelist_path, "r") as f:
 random.shuffle(filepaths)
 n = len(filepaths)
 
-train_files = filepaths[:int(0.05*n)]
-val_files = filepaths[int(0.05*n):int(0.1*n)]
+train_files = filepaths[:int(0.1*n)]
+val_files = filepaths[int(0.1*n):int(0.2*n)]
 
 train_dataset = InterleavedJetDataset(train_files, batch_size=BATCH_SIZE)
 val_dataset = InterleavedJetDataset(val_files, batch_size=BATCH_SIZE)
