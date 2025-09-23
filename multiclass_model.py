@@ -19,10 +19,10 @@ from accelerate import Accelerator
 from accelerate.utils import DistributedDataParallelKwargs
 from accelerate.utils import InitProcessGroupKwargs
 
-NAME = "multiclass_5%_ijd_plain"
+NAME = "multiclass_5%_ijd_plain_20e"
 BATCH_SIZE = 512
 LR = 1e-4
-EPOCHS = 10
+EPOCHS = 20
 DATA_DIR = "/mnt/data/jet_data"
 SAVE_DIR = "/mnt/data/output"
 
