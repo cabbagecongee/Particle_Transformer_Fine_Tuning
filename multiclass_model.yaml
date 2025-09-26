@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-multiclass-10pct-ijd-plain
+  name: tn-multiclass-20pct-ijd-plain
   namespace: cms-ml
 spec:
   backoffLimit: 2
@@ -17,7 +17,7 @@ spec:
         effect: "NoSchedule"
 
       containers:
-      - name: tn-multiclass-45pct-ijd-plain-15e
+      - name: tn-multiclass-20pct-ijd-plain
         image: pytorch/pytorch:2.2.0-cuda12.1-cudnn8-runtime
         env:
         - name: NCCL_SOCKET_IFNAME
@@ -66,11 +66,11 @@ spec:
           mountPath: /dev/shm
         resources:
           limits:
-            memory: "64Gi"
+            memory: "32Gi"
             cpu: "4"
             nvidia.com/gpu: "4"
           requests:
-            memory: "64Gi"
+            memory: "32Gi"
             cpu: "4"
             nvidia.com/gpu: "4"
 
@@ -84,10 +84,10 @@ spec:
         - /mnt/repo/Particle_Transformer_Fine_Tunning
         resources:
           limits:
-            memory: "900Mi"
+            memory: "32Gi"
             cpu: "4"
           requests:
-            memory: "900Mi"
+            memory: "32Gi"
             cpu: "4"
         volumeMounts:
         - name: git-repo
@@ -102,7 +102,7 @@ spec:
       - name: dshm
         emptyDir:
           medium: Memory
-          sizeLimit: 16Gi
+          sizeLimit: 32Gi
 
       affinity:
         nodeAffinity:

@@ -88,8 +88,8 @@ val_files = filepaths[int(0.2*n):int(0.3*n)]
 train_dataset = InterleavedJetDataset(train_files, batch_size=BATCH_SIZE)
 val_dataset = InterleavedJetDataset(val_files, batch_size=BATCH_SIZE)
 
-train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=2, pin_memory=True)
-val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=2, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, num_workers=0, pin_memory=True)
 
 try:
     import torch.distributed as dist
