@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tn-multiclass-10pct-ijd-plain-15e
+  name: tn-multiclass-10pct-ijd-plain
   namespace: cms-ml
 spec:
   backoffLimit: 2
